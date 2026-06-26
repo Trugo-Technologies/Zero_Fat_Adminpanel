@@ -1,0 +1,14 @@
+@import "base.css";
+@import "maps.css";
+@import "wysiwyg.css"; /*wysiwyg Text Editor */
+
+body[dir="rtl"] {
+  font-family: "system-ui" !important; /* Font for Arabic */
+}
+
+.rc-image-preview-root {
+  z-index: 99999;
+  position: absolute;
+}
+
+

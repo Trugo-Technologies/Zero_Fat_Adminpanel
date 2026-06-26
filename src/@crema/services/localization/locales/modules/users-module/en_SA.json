@@ -1,0 +1,14 @@
+{
+  "sidebar.usersManagement.title": "Users Management",
+  "sidebar.admins": "Admins",
+  "************* Admins *************": "************* Admins *************",
+  "admin.add": "Add Admin",
+  "admin.deleteTitle": "Delete Admin",
+  "admin.deleteContent": "Are You Sure to delete Admin",
+  "admin.activeTitle": "Active Admin",
+  "admin.activeContent": "Are You Sure to Active Admin",
+  "admin.deActiveTitle": "Deactivate Admin",
+  "admin.deActiveContent": "Are You Sure to Deactivate Admin",
+  "admin.details": "Admin Details",
+  "admin.edit": "Edit Admin"
+}

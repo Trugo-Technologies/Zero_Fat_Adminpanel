@@ -1,0 +1,17 @@
+{
+    "sidebar.usersManagement.title": "إدارة المستخدمين",
+    "sidebar.admins": "المشرفون",
+  
+    "************* Admins *************": "************* Admins *************",
+  "admin.add":"إضافة مشرف",
+  "admin.deleteTitle": "حذف المشرف",
+  "admin.deleteContent": "هل أنت متأكد من حذف المشرف",
+  "admin.activeTitle": "تفعيل المشرف",
+  "admin.activeContent": "هل أنت متأكد من تفعيل المشرف",
+  "admin.deActiveTitle": "إلغاء تفعيل المشرف",
+  "admin.deActiveContent": "هل أنت متأكد من إلغاء تفعيل المشرف",
+  "admin.details": "تفاصيل المشرف",
+  "admin.edit":"تعديل المشرف"
+
+  }
+  
