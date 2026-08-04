@@ -6,7 +6,9 @@ import {
   Card,
   CardContent,
   Grid,
+  MenuItem,
   OutlinedInput,
+  Select,
   Typography,
 } from "@mui/material";
 import { useCallback, useState } from "react";
@@ -18,16 +20,16 @@ import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
 import { IMenusListDto } from "src/types/modules/nutriplan/menuManagement/menus";
+import {
+  ALL_PUBLISH_STATUS,
+  MenuAppliedFilters,
+  buildMenuFilterQueryParams,
+  createDefaultMenuFilters,
+  dateInputSx,
+  selectSx,
+} from "./menuFilterHelpers";
 import { useGetAllMenusQuery } from "./services/api";
 import useMenus from "./useMenus";
-
-const dateInputSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
 
 const MenusPage = () => {
   const { messages } = useIntl();
@@ -52,69 +54,144 @@ const MenusPage = () => {
   } = usePaginateData<IMenusListDto>(useGetAllMenusQuery);
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState({
-    fromDate: "",
-    toDate: "",
-  });
+  const [appliedFilters, setAppliedFilters] = useState<MenuAppliedFilters>(
+    createDefaultMenuFilters
+  );
 
-  const syncDateRangeToQuery = useCallback(
-    (fromDate: string, toDate: string) => {
+  const syncFiltersToQuery = useCallback(
+    (filters: MenuAppliedFilters) => {
+      const filterParams = buildMenuFilterQueryParams(filters);
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        startDate: fromDate || undefined,
-        endDate: toDate || undefined,
+        isPublished: filterParams.isPublished,
+        startDateFrom: filterParams.startDateFrom,
+        startDateTo: filterParams.startDateTo,
+        endDateFrom: filterParams.endDateFrom,
+        endDateTo: filterParams.endDateTo,
       }));
     },
     [setParameter]
   );
 
-  const handleFromDateChange = (value: string) => {
-    const next = { ...appliedFilters, fromDate: value };
+  const updateFilters = (
+    updater: (current: MenuAppliedFilters) => MenuAppliedFilters
+  ) => {
+    const next = updater(appliedFilters);
     setAppliedFilters(next);
-    syncDateRangeToQuery(next.fromDate, next.toDate);
+    syncFiltersToQuery(next);
   };
 
-  const handleToDateChange = (value: string) => {
-    const next = { ...appliedFilters, toDate: value };
-    setAppliedFilters(next);
-    syncDateRangeToQuery(next.fromDate, next.toDate);
+  const handlePublishStatusChange = (value: string) => {
+    updateFilters((current) => ({ ...current, publishStatus: value }));
+  };
+
+  const handleStartDateFromChange = (value: string) => {
+    updateFilters((current) => ({ ...current, startDateFrom: value }));
+  };
+
+  const handleStartDateToChange = (value: string) => {
+    updateFilters((current) => ({ ...current, startDateTo: value }));
+  };
+
+  const handleEndDateFromChange = (value: string) => {
+    updateFilters((current) => ({ ...current, endDateFrom: value }));
+  };
+
+  const handleEndDateToChange = (value: string) => {
+    updateFilters((current) => ({ ...current, endDateTo: value }));
   };
 
   const handleClear = () => {
-    setAppliedFilters({ fromDate: "", toDate: "" });
-    setParameter((prev) => {
-      const { startDate: _, endDate: __, ...rest } = prev;
-      return { ...rest, pageNumber: 1 };
-    });
+    setAppliedFilters(createDefaultMenuFilters());
+    setParameter((prev) => ({
+      ...prev,
+      pageNumber: 1,
+      isPublished: undefined,
+      startDateFrom: undefined,
+      startDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+    }));
   };
 
   const advanceFiltersInputs = [
-    <Box key="fromDate">
+    <Box key="isPublished">
       <Typography
         sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
       >
-        {messages["common.startDate"] as string}
+        {messages["menus.isPublished"] as string}
+      </Typography>
+      <Select
+        size="small"
+        value={appliedFilters.publishStatus}
+        onChange={(e) => handlePublishStatusChange(e.target.value)}
+        sx={selectSx}
+      >
+        <MenuItem value={ALL_PUBLISH_STATUS} sx={{ fontSize: 13 }}>
+          {messages["common.all"] as string}
+        </MenuItem>
+        <MenuItem value="Published" sx={{ fontSize: 13 }}>
+          {messages["menus.isPublished"] as string}
+        </MenuItem>
+        <MenuItem value="Unpublished" sx={{ fontSize: 13 }}>
+          {messages["menus.filter.unpublished"] as string}
+        </MenuItem>
+      </Select>
+    </Box>,
+    <Box key="startDateFrom">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["menus.filter.startDateFrom"] as string}
       </Typography>
       <OutlinedInput
         type="date"
         size="small"
-        value={appliedFilters.fromDate}
-        onChange={(e) => handleFromDateChange(e.target.value)}
+        value={appliedFilters.startDateFrom}
+        onChange={(e) => handleStartDateFromChange(e.target.value)}
         sx={dateInputSx}
       />
     </Box>,
-    <Box key="toDate">
+    <Box key="startDateTo">
       <Typography
         sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
       >
-        {messages["common.endDate"] as string}
+        {messages["menus.filter.startDateTo"] as string}
       </Typography>
       <OutlinedInput
         type="date"
         size="small"
-        value={appliedFilters.toDate}
-        onChange={(e) => handleToDateChange(e.target.value)}
+        value={appliedFilters.startDateTo}
+        onChange={(e) => handleStartDateToChange(e.target.value)}
+        sx={dateInputSx}
+      />
+    </Box>,
+    <Box key="endDateFrom">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["menus.filter.endDateFrom"] as string}
+      </Typography>
+      <OutlinedInput
+        type="date"
+        size="small"
+        value={appliedFilters.endDateFrom}
+        onChange={(e) => handleEndDateFromChange(e.target.value)}
+        sx={dateInputSx}
+      />
+    </Box>,
+    <Box key="endDateTo">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["menus.filter.endDateTo"] as string}
+      </Typography>
+      <OutlinedInput
+        type="date"
+        size="small"
+        value={appliedFilters.endDateTo}
+        onChange={(e) => handleEndDateToChange(e.target.value)}
         sx={dateInputSx}
       />
     </Box>,
@@ -158,7 +235,7 @@ const MenusPage = () => {
                   ) => {
                     setSearchValue(event.target.value);
                   }}
-                  successUrl={`${endPoints.menus().pathname}/search`}
+                  successUrl={`${endPoints.menus().pathname}/filter`}
                   selectionModel={selectionModel as string[]}
                   setSelectionModel={setSelectionModel}
                   refetch={refetch}

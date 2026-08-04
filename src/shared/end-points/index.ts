@@ -24,6 +24,8 @@ export const endPoints = {
   allergens: getEndPoint("nutriplan-module/Allergens"),
   nutriplanStatistics: getEndPoint("/nutriplan-module/Statistics"),
   clients: getEndPoint("clientPortal-module/clients"),
+  clientAccountAccess: getEndPoint("clientPortal-module/ClientAccountAccess"),
+  manageSubscriptions: getEndPoint("clientPortal-module/ManageSubscriptions"),
   clientStatistics: getEndPoint("clientPortal-module/Statistics"),
   paymentsEndpoint: getEndPoint("clientPortal-module/payments"),
   dailySelections: getEndPoint("clientPortal-module/dailySelections"),
@@ -42,6 +44,11 @@ export const endPoints = {
   clientPortalSettingsEndpoint: getEndPoint(
     "clientPortal-module/clientPortalSettings"
   ),
+  mealRatings: getEndPoint("clientPortal-module/MealRatings"),
+  subscriptionReports: getEndPoint("clientPortal-module/SubscriptionReports"),
+  clientReports: getEndPoint("clientPortal-module/Reports"),
+  notifications: getEndPoint("clientPortal-module/notifications"),
+  manageNotifications: getEndPoint("clientPortal-module/ManageNotifications"),
 
   categories: getEndPoint("nutriplan-module/Categories"),
   mealTypes: getEndPoint("nutriplan-module/MealTypes"),

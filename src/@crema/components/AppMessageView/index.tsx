@@ -85,13 +85,16 @@ const AppMessageView: React.FC<AppMessageViewProps> = (props) => {
     setTimeout(() => clearInfoView(), 500);
   };
   useEffect(() => {
-    if (message) {
+    if (message?.trim()) {
       setOpen(true);
+    } else {
+      setOpen(false);
     }
   }, [message]);
 
   return (
     <StyledSnackbar
+      sx={{ zIndex: (theme) => theme.zIndex.modal + 200 }}
       anchorOrigin={{
         vertical: 'bottom',
         horizontal: 'right',

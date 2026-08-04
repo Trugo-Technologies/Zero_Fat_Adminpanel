@@ -7,7 +7,7 @@ import axios, { AxiosError } from "axios";
 import { LanguageProps } from "src/@crema/types/models/Apps";
 // import i18next from "i18next";
 import { showErrorToasts } from "src/Components/toasts";
-import { IErrorResponse } from "src/types/baseEntity";
+import { getApiErrorMessage } from "src/Helpers/get-api-error-message";
 
 export const authAxios = axios.create();
 type errorResponse = {
@@ -35,20 +35,13 @@ authAxios.interceptors.response.use(
         localStorage.removeItem("token");
         window.location.reload();
       } else {
-        if ((error?.response?.data as IErrorResponse)?.errors) {
-          showErrorToasts(
-            (error?.response?.data as IErrorResponse)?.errors.join(", ")
+        const message =
+          getApiErrorMessage(error) ||
+          getValueBasedOnCurrentLanguage(
+            "لقد حدث خطأ ما، أعد المحاولة من فضلك!",
+            "Something went wrong, Please try again!"
           );
-        } else if ((error?.response?.data as IErrorResponse)?.title) {
-          showErrorToasts((error?.response?.data as IErrorResponse)?.title);
-        } else {
-          showErrorToasts(
-            getValueBasedOnCurrentLanguage(
-              "لقد حدث خطأ ما، أعد المحاولة من فضلك!",
-              "Something went wrong, Please try again!"
-            )
-          );
-        }
+        showErrorToasts(message);
       }
       return Promise.reject(error);
     }

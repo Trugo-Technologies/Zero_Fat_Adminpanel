@@ -16,6 +16,7 @@ import AppTextField from "src/@crema/components/AppFormComponents/AppTextField";
 import { Fonts } from "src/@crema/constants/AppEnums";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
 import AppEditModal from "src/Components/baseComponents/modals/AppEditModal";
+import AppTimePicker from "src/Components/baseComponents/inputs/dateTimePickers/AppTimePicker";
 import {
   useGetClientPortalSettingsQuery,
   useUpdateClientPortalSettingsMutation,
@@ -151,7 +152,9 @@ const EditClientPortalSettings: React.FC<IEditClientPortalSettingsProps> = (
 
           offsetSubscriptionInDays:
             clientPortalSettingsItem?.data?.offsetSubscriptionInDays || null,
+          cutoffTime: clientPortalSettingsItem?.data?.cutoffTime || null,
         }}
+        enableReinitialize
         innerRef={refForm}
         validationSchema={validationSchema}
         onSubmit={async (data) => {
@@ -320,6 +323,16 @@ const EditClientPortalSettings: React.FC<IEditClientPortalSettingsProps> = (
                   variant='outlined'
                   size='small'
                   fullWidth
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <AppTimePicker
+                  label={
+                    <IntlMessages id='clientPortalSettings.cutoffTime' />
+                  }
+                  name='cutoffTime'
+                  value={values.cutoffTime}
+                  onChange={(value) => setFieldValue("cutoffTime", value)}
                 />
               </Grid>
             </Grid>

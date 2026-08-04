@@ -54,6 +54,8 @@ interface IAppDataGridProps {
   //for selections
   onSelectionModelChange?: (selectionModel: GridRowSelectionModel) => void;
   selectionModel?: GridRowSelectionModel;
+  /** Keep selected row ids even when they are not on the current server page */
+  keepNonExistentRowsSelected?: boolean;
   // When use data grid with another id key
   getRowId?: (row: any) => any;
   initialState?: GridInitialState;
@@ -76,6 +78,7 @@ const AppDataGrid: React.FC<IAppDataGridProps> = (props) => {
     disableColumnMenu = true,
     disableColumnSelector = false,
     selectionModel,
+    keepNonExistentRowsSelected = false,
     getRowId,
     tableName = "test",
     initialState,
@@ -165,6 +168,7 @@ const AppDataGrid: React.FC<IAppDataGridProps> = (props) => {
       //for selection
       onRowSelectionModelChange={onSelectionModelChange}
       rowSelectionModel={selectionModel}
+      keepNonExistentRowsSelected={keepNonExistentRowsSelected}
       sx={{
         borderWidth: "0px !important",
 

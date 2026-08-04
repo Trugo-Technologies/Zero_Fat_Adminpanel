@@ -15,6 +15,16 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { IDiscountRule } from "src/types/modules/clientsManagement/discounts/discountRules";
 import PublishedWithChangesIcon from "@mui/icons-material/PublishedWithChanges";
+
+/** Published rules have a Stripe id (or explicit isPublished from API). */
+const isDiscountRulePublished = (row?: IDiscountRule | null) => {
+  if (!row) return false;
+  if ((row as IDiscountRule & { isPublished?: boolean }).isPublished === true) {
+    return true;
+  }
+  return typeof row.stripeId === "string" && row.stripeId.trim().length > 0;
+};
+
 function discountRulesColumns(
   handleDetails = (_: IDiscountRule) => {},
   handleUpdate = (_: IDiscountRule) => {},
@@ -163,7 +173,7 @@ function discountRulesColumns(
       headerClassName: "super-app-theme--header",
       renderCell: (params) => (
         <>
-          {params?.row?.stripeId ? (
+          {isDiscountRulePublished(params?.row) ? (
             <CheckIcon color='success' />
           ) : (
             <CloseIcon color='error' />
@@ -258,7 +268,7 @@ function discountRulesColumns(
               }
             />
 
-            {!params?.row?.stripeId && (
+            {!isDiscountRulePublished(params?.row) && (
               <>
                 {/* publish */}
                 <AppIconButton
@@ -273,21 +283,22 @@ function discountRulesColumns(
                     />
                   }
                 />
-                {/* Edit */}
-                <AppIconButton
-                  label='table.actions.edit'
-                  handleClick={() => {
-                    handleUpdate(params.row);
-                  }}
-                  childComp={
-                    <EditOutlinedIcon
-                      fontSize='small'
-                      sx={{ color: "#9b9b9b" }}
-                    />
-                  }
-                />
               </>
             )}
+
+            {/* Edit is always available */}
+            <AppIconButton
+              label='table.actions.edit'
+              handleClick={() => {
+                handleUpdate(params.row);
+              }}
+              childComp={
+                <EditOutlinedIcon
+                  fontSize='small'
+                  sx={{ color: "#9b9b9b" }}
+                />
+              }
+            />
 
             {/**ACTIVE */}
             <AddDataGridActivation
@@ -296,7 +307,7 @@ function discountRulesColumns(
             />
 
             {/* Delete */}
-            {!params?.row?.stripeId && (
+            {!isDiscountRulePublished(params?.row) && (
               <AppIconButton
                 label='table.actions.delete'
                 handleClick={() => {

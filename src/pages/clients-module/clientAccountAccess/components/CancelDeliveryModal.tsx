@@ -11,40 +11,98 @@ import {
   Box,
   alpha,
   IconButton,
-  Stack
+  Stack,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import BlockIcon from "@mui/icons-material/Block";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { Checkbox, FormGroup } from "@mui/material";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
-
-type ScopeOption = "thisDay" | "upcoming" | "entireOrder" | "mealPlanOnly";
+import {
+  DeliveryCancelScopeOption,
+  deliveryCancelScopeToApi,
+} from "../deliveryCalendarActions";
+import { useGetDeliveryCalendarDayQuery } from "../services/api";
 
 type Props = {
   open: boolean;
+  clientId?: string | null;
+  date?: string | null;
   onClose: () => void;
-  onSave: (scope: ScopeOption, selectedMeals: string[]) => void;
+  onSave: (
+    scope: DeliveryCancelScopeOption,
+    mealTypeIds: string[]
+  ) => void | Promise<void>;
+  isSaving?: boolean;
+  errorMessage?: string | null;
 };
 
-const scopeOptions: { value: ScopeOption; label: string }[] = [
+const scopeOptions: { value: DeliveryCancelScopeOption; label: string }[] = [
   { value: "thisDay", label: "This Day Only" },
   { value: "upcoming", label: "All Upcoming Days" },
   { value: "entireOrder", label: "Entire Order" },
   { value: "mealPlanOnly", label: "Specific Meal Only" },
 ];
 
-const CancelDeliveryModal = ({ open, onClose, onSave }: Props) => {
+const CancelDeliveryModal = ({
+  open,
+  clientId,
+  date,
+  onClose,
+  onSave,
+  isSaving = false,
+  errorMessage = null,
+}: Props) => {
   const { messages } = useIntl();
-  const [scope, setScope] = useState<ScopeOption>("thisDay");
-  const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
+  const [scope, setScope] = useState<DeliveryCancelScopeOption>("thisDay");
+  const [selectedMealTypeIds, setSelectedMealTypeIds] = useState<string[]>([]);
 
-  const handleMealToggle = (meal: string) => {
-    setSelectedMeals((prev) =>
-      prev.includes(meal) ? prev.filter((m) => m !== meal) : [...prev, meal]
+  const { data: dayDetailResponse } = useGetDeliveryCalendarDayQuery(
+    { clientId: clientId || "", date: date || "" },
+    { skip: !open || !clientId || !date }
+  );
+
+  const mealOptions = useMemo(() => {
+    const meals = dayDetailResponse?.data?.meals ?? [];
+    const uniqueMeals = new Map<string, string>();
+
+    meals.forEach((meal) => {
+      if (!uniqueMeals.has(meal.mealTypeId)) {
+        uniqueMeals.set(meal.mealTypeId, meal.mealTypeName);
+      }
+    });
+
+    return Array.from(uniqueMeals.entries()).map(([mealTypeId, mealTypeName]) => ({
+      mealTypeId,
+      mealTypeName,
+    }));
+  }, [dayDetailResponse?.data?.meals]);
+
+  useEffect(() => {
+    if (!open) {
+      setScope("thisDay");
+      setSelectedMealTypeIds([]);
+    }
+  }, [open]);
+
+  const handleMealToggle = (mealTypeId: string) => {
+    setSelectedMealTypeIds((prev) =>
+      prev.includes(mealTypeId)
+        ? prev.filter((id) => id !== mealTypeId)
+        : [...prev, mealTypeId]
     );
   };
+
+  const handleSave = async () => {
+    await onSave(scope, selectedMealTypeIds);
+  };
+
+  const isSaveDisabled =
+    isSaving ||
+    (scope === "mealPlanOnly" && selectedMealTypeIds.length === 0);
 
   return (
     <Dialog
@@ -92,11 +150,16 @@ const CancelDeliveryModal = ({ open, onClose, onSave }: Props) => {
       </Box>
 
       <DialogContent sx={{ p: 4 }}>
+        {errorMessage ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {errorMessage}
+          </Alert>
+        ) : null}
         <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#1A2B48", mb: 2 }}>
           Select the scope of the cancellation:
         </Typography>
         <FormControl component="fieldset" fullWidth>
-          <RadioGroup value={scope} onChange={(e) => setScope(e.target.value as ScopeOption)}>
+          <RadioGroup value={scope} onChange={(e) => setScope(e.target.value as DeliveryCancelScopeOption)}>
             <Stack spacing={1.5}>
               {scopeOptions.map((opt) => (
                 <Box
@@ -124,22 +187,28 @@ const CancelDeliveryModal = ({ open, onClose, onSave }: Props) => {
                       <Typography sx={{ fontSize: 13, fontWeight: 600, color: "text.secondary", mb: 1 }}>
                         Select meals to cancel:
                       </Typography>
-                      <FormGroup row>
-                        {["Breakfast", "Lunch", "Dinner", "Post Workout"].map((meal) => (
-                          <FormControlLabel
-                            key={meal}
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={selectedMeals.includes(meal)}
-                                onChange={() => handleMealToggle(meal)}
-                                sx={{ "&.Mui-checked": { color: "primary.main" } }}
-                              />
-                            }
-                            label={<Typography sx={{ fontSize: 13 }}>{meal}</Typography>}
-                          />
-                        ))}
-                      </FormGroup>
+                      {mealOptions.length > 0 ? (
+                        <FormGroup row>
+                          {mealOptions.map((meal) => (
+                            <FormControlLabel
+                              key={meal.mealTypeId}
+                              control={
+                                <Checkbox
+                                  size="small"
+                                  checked={selectedMealTypeIds.includes(meal.mealTypeId)}
+                                  onChange={() => handleMealToggle(meal.mealTypeId)}
+                                  sx={{ "&.Mui-checked": { color: "primary.main" } }}
+                                />
+                              }
+                              label={<Typography sx={{ fontSize: 13 }}>{meal.mealTypeName}</Typography>}
+                            />
+                          ))}
+                        </FormGroup>
+                      ) : (
+                        <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                          No meals available for this day.
+                        </Typography>
+                      )}
                     </Box>
                   )}
                 </Box>
@@ -150,26 +219,28 @@ const CancelDeliveryModal = ({ open, onClose, onSave }: Props) => {
       </DialogContent>
 
       <DialogActions sx={{ p: 3, borderTop: "1px solid #F1F5F9", bgcolor: "#F8FAFC" }}>
-        <Button onClick={onClose} sx={{ color: "text.secondary", fontWeight: 600, px: 3 }}>
+        <Button onClick={onClose} disabled={isSaving} sx={{ color: "text.secondary", fontWeight: 600, px: 3 }}>
           {messages["common.cancel"] as string}
         </Button>
         <Button
           variant="contained"
-          onClick={() => {
-            onSave(scope, selectedMeals);
-            onClose();
-          }}
-          disabled={scope === "mealPlanOnly" && selectedMeals.length === 0}
+          onClick={handleSave}
+          disabled={isSaveDisabled}
           sx={{
             bgcolor: "#EF4444",
             color: "#FFFFFF",
             fontWeight: 700,
             px: 4,
             borderRadius: "10px",
+            minWidth: 160,
             "&:hover": { bgcolor: "#DC2626" },
           }}
         >
-          Confirm Cancellation
+          {isSaving ? (
+            <CircularProgress size={22} color="inherit" />
+          ) : (
+            "Confirm Cancellation"
+          )}
         </Button>
       </DialogActions>
     </Dialog>

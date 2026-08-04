@@ -9,6 +9,8 @@ import { IBaseErrorResponse } from "src/types/baseEntity";
 import {
   IDailyMenuMealsDetailsDto,
   IDailyMenuMealsListDto,
+  IMealsByPlanDetails,
+  IMealsByPlanArgs,
 } from "src/types/modules/nutriplan/menuManagement/dailyMenuMeals";
 import {
   IMenusDetailsDto,
@@ -140,6 +142,27 @@ const apiService = api
         }),
         keepUnusedDataFor: 0, // Disable caching
       }),
+
+      getMealsByPlan: query<IMealsByPlanDetails, IMealsByPlanArgs>({
+        query: ({ mealTypeId, date, clientId, mealPlanId, search }) => {
+          const params: Record<string, string> = {
+            MealTypeId: mealTypeId,
+            Date: date,
+            ClientId: clientId,
+          };
+
+          if (mealPlanId) params.MealPlanId = mealPlanId;
+          if (search) params.Search = search;
+
+          return {
+            url: `${endPoints.dailyMenuMeals().pathname}/admin/mealsbyPlan`,
+            method: "GET",
+            params,
+          };
+        },
+        keepUnusedDataFor: 0,
+      }),
+
       deleteDailyMenuMeals: mutation({
         invalidatesTags: ["dailyMenuMeals"],
         query: (id) => ({
@@ -157,5 +180,6 @@ export const {
   useGetDailyMenuMealsQuery,
   useUpdateDefaultDailyMenuMealsMutation,
   useGetAllDailyMenuMealsQuery,
+  useGetMealsByPlanQuery,
   useCreateDailyMenuMultiMealsMutation,
 } = apiService;

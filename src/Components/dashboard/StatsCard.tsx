@@ -9,72 +9,72 @@ import IntlMessages from "src/@crema/helpers/IntlMessages";
 type Props = {
   data: StateCardType;
 };
+
 const StatsCard = ({ data }: Props) => {
   return (
     <AppCard
-      className='card-hover'
+      className="card-hover"
       contentStyle={{
         p: 0,
         "&:last-of-type": {
           pb: "0 !important",
         },
         mb: 0,
-      }}>
+        height: "100%",
+      }}
+    >
       <Box
         sx={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: 4,
-        }}>
+          alignItems: "flex-start",
+          gap: 2,
+          padding: 2.5,
+          minHeight: 96,
+          height: "100%",
+        }}
+      >
         <Box
+          component="span"
           sx={{
+            flexShrink: 0,
+            height: 40,
+            width: 40,
             display: "flex",
             alignItems: "center",
-          }}>
-          <Box
-            component='span'
-            sx={{
-              mr: 3.5,
-              height: 46,
-              width: 46,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              color: data.color,
-              backgroundColor: data.color + "22",
-            }}>
-            <Icon
-              sx={{
-                fontSize: 24,
-              }}>
-              {data.icon}
-            </Icon>
-          </Box>
+            justifyContent: "center",
+            borderRadius: "50%",
+            color: data.color,
+            backgroundColor: data.color + "22",
+          }}
+        >
+          <Icon sx={{ fontSize: 22 }}>{data.icon}</Icon>
+        </Box>
 
-          <Box sx={{ mr: 2, overflow: "hidden" }}>
-            <Typography
-              variant='h2'
-              component='h2'
-              sx={{
-                fontWeight: Fonts.SEMI_BOLD,
-                fontSize: 18,
-              }}>
-              {data.value}
-            </Typography>
-            <Typography
-              sx={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                fontSize: 14,
-                color: (theme) => theme.palette.text.secondary,
-                mt: 0.5,
-              }}>
-              <IntlMessages id={data.name} />
-            </Typography>
-          </Box>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography
+            variant="h2"
+            component="h2"
+            sx={{
+              fontWeight: Fonts.SEMI_BOLD,
+              fontSize: 18,
+              lineHeight: 1.2,
+              wordBreak: "break-word",
+            }}
+          >
+            {data.value}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 13,
+              lineHeight: 1.35,
+              color: (theme) => theme.palette.text.secondary,
+              mt: 0.75,
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+            }}
+          >
+            {data.label ?? <IntlMessages id={data.name} />}
+          </Typography>
         </Box>
       </Box>
     </AppCard>

@@ -8,7 +8,7 @@ import {
   Grid,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useIntl from "react-intl/lib/src/components/useIntl";
 import { useParams } from "react-router-dom";
 import AppBreadcrumb from "src/Components/baseComponents/breadcrumb/AppBreadcrumb";
@@ -67,12 +67,28 @@ const CustomizationOptionsPage = () => {
   );
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
+
+  const allGroupsOption = useMemo(
+    () =>
+      ({
+        id: "",
+        nameEn: messages["common.all"] as string,
+        nameAr: messages["common.all"] as string,
+      }) as ICustomizationGroup,
+    [messages]
+  );
+
   const [selectedGroup, setSelectedGroup] =
     useState<ICustomizationGroup | null>(null);
 
   useEffect(() => {
     if (groupPage && groupPage > 1) refetchGroups();
   }, [groupPage, refetchGroups]);
+
+  const groupOptions =
+    groupPage && groupPage > 1
+      ? groupsData?.data
+      : [allGroupsOption, ...(groupsData?.data ?? [])];
 
   const syncGroupToQuery = useCallback(
     (groupId?: string | null) => {
@@ -89,12 +105,12 @@ const CustomizationOptionsPage = () => {
     _event: unknown,
     value: ICustomizationGroup | null
   ) => {
-    setSelectedGroup(value);
+    setSelectedGroup(value && value.id ? value : allGroupsOption);
     syncGroupToQuery(value?.id ?? null);
   };
 
   const handleClear = () => {
-    setSelectedGroup(null);
+    setSelectedGroup(allGroupsOption);
     setGroupSearchValue("");
     setParameter((prev) => {
       const { groupId: _, ...rest } = prev;
@@ -110,13 +126,12 @@ const CustomizationOptionsPage = () => {
         {messages["customizationGroups.name"] as string}
       </Typography>
       <AppBaseAutoComplete
-        label="customizationGroups.name"
         isLoading={isFetchingGroups}
-        options={groupsData?.data}
+        options={groupOptions}
         hasNextPage={groupsData?.hasNextPage}
         pageNumber={groupPage}
         changePage={changeGroupPage}
-        value={selectedGroup}
+        value={selectedGroup ?? allGroupsOption}
         onChangeAutoComplete={handleGroupChange}
         onChangeTextField={(event) =>
           setGroupSearchValue(event.target.value)
@@ -166,7 +181,7 @@ const CustomizationOptionsPage = () => {
                   ) => {
                     setSearchValue(event.target.value);
                   }}
-                  successUrl={`${endPoints.customizationOptions().pathname}/search`}
+                  successUrl={`${endPoints.customizationOptions().pathname}/filter`}
                   selectionModel={selectionModel as string[]}
                   setSelectionModel={setSelectionModel}
                   refetch={refetch}

@@ -1,6 +1,7 @@
 /** @format */
 
 import { Navigate } from "react-router-dom";
+import React from "react";
 
 import { authRouteConfig } from "./AuthRoutes";
 import Error403 from "../../../modules/errorPages/Error403";
@@ -11,6 +12,10 @@ import { coreModuleRoutes } from "./core-module";
 import { clientsModuleRoutes } from "./ClientsRoutes";
 import { UsersModuleRoutes } from "./Users-module";
 import { DashboardRoutes } from "./DashboardRoutes";
+
+const PrivacyPolicyPage = React.lazy(
+  () => import("../../../pages/legal/PrivacyPolicyPage")
+);
 
 const authorizedStructure = (loginUrl: string) => {
   return {
@@ -36,6 +41,10 @@ const publicStructure = (initialUrl: string) => {
 const anonymousStructure = (initialUrl: string) => {
   return {
     routes: errorPagesConfigs.concat([
+      {
+        path: "/privacy-policy",
+        element: <PrivacyPolicyPage />,
+      },
       {
         path: "/",
         element: <Navigate to={initialUrl} />,

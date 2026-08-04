@@ -1,14 +1,7 @@
 /** @format */
 
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Grid,
-  OutlinedInput,
-  Typography,
-} from "@mui/material";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import { Button, Card, CardContent, Grid } from "@mui/material";
 import moment from "moment";
 import { useCallback, useState } from "react";
 import { useIntl } from "react-intl";
@@ -19,16 +12,21 @@ import AppFilters from "src/Components/baseComponents/filters/AppFilters";
 import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
-import { useGetAllKitchenMealCountQuery } from "./services/api";
+import { buildKitchenMealCountExportFilterInputs } from "./buildKitchenMealCountExportFilterInputs";
+import { buildKitchenMealCountFilterInputs } from "./buildKitchenMealCountFilterInputs";
+import {
+  KitchenMealCountAppliedFilters,
+  KitchenMealCountExportFilters,
+  KitchenMealCountExportPeriod,
+  buildKitchenMealCountFilterQueryParams,
+  createDefaultKitchenMealCountExportFilters,
+  createDefaultKitchenMealCountFilters,
+} from "./kitchenMealCountFilterHelpers";
+import {
+  useExportKitchenMealCountMutation,
+  useGetAllKitchenMealCountQuery,
+} from "./services/api";
 import useKitchenMealCount from "./useKitchenMealCount";
-
-const dateInputSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
 
 function KitchenMealCountPage() {
   const { messages } = useIntl();
@@ -57,28 +55,40 @@ function KitchenMealCountPage() {
   );
   const { columns, selectionModel, setSelectionModel, Modals } =
     useKitchenMealCount();
+  const [exportKitchenMealCount, { isLoading: isExporting }] =
+    useExportKitchenMealCountMutation();
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [appliedDate, setAppliedDate] = useState(currentDate);
+  const [isOpenExportFilters, setIsOpenExportFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] =
+    useState<KitchenMealCountAppliedFilters>(() =>
+      createDefaultKitchenMealCountFilters(currentDate)
+    );
+  const [exportFilters, setExportFilters] =
+    useState<KitchenMealCountExportFilters>(
+      createDefaultKitchenMealCountExportFilters
+    );
 
-  const syncDateToQuery = useCallback(
-    (date: string) => {
+  const syncFiltersToQuery = useCallback(
+    (filters: KitchenMealCountAppliedFilters) => {
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        date: date || currentDate,
+        ...buildKitchenMealCountFilterQueryParams(filters, currentDate),
       }));
     },
     [setParameter, currentDate]
   );
 
   const handleDateChange = (value: string) => {
-    setAppliedDate(value);
-    syncDateToQuery(value);
+    const next = { ...appliedFilters, date: value };
+    setAppliedFilters(next);
+    syncFiltersToQuery(next);
   };
 
-  const handleClear = () => {
-    setAppliedDate(currentDate);
+  const handleClearListFilters = () => {
+    const cleared = createDefaultKitchenMealCountFilters(currentDate);
+    setAppliedFilters(cleared);
     setParameter((prev) => ({
       ...prev,
       pageNumber: 1,
@@ -86,38 +96,78 @@ function KitchenMealCountPage() {
     }));
   };
 
-  const advanceFiltersInputs = [
-    <Box key="date">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["dailySelections.date"] as string}
-      </Typography>
-      <OutlinedInput
-        type="date"
-        size="small"
-        value={appliedDate}
-        onChange={(e) => handleDateChange(e.target.value)}
-        sx={dateInputSx}
-      />
-    </Box>,
-    <Box key="clear" sx={{ ml: "auto" }}>
+  const handleExportPeriodChange = (value: KitchenMealCountExportPeriod) => {
+    setExportFilters((current) => ({
+      ...current,
+      period: value,
+      fromDate: value === "custom" ? current.fromDate : "",
+      toDate: value === "custom" ? current.toDate : "",
+    }));
+  };
+
+  const handleExportFromDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, fromDate: value }));
+  };
+
+  const handleExportToDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, toDate: value }));
+  };
+
+  const handleClearExportFilters = () => {
+    setExportFilters(createDefaultKitchenMealCountExportFilters());
+  };
+
+  const handleDownloadExport = async () => {
+    try {
+      await exportKitchenMealCount(exportFilters).unwrap();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleToggleExportFilters = () => {
+    const next = !isOpenExportFilters;
+    setIsOpenExportFilters(next);
+    if (next) {
+      setIsOpenAdvanceFilters(false);
+    }
+  };
+
+  const advanceFiltersInputs = buildKitchenMealCountFilterInputs({
+    filters: appliedFilters,
+    messages,
+    onDateChange: handleDateChange,
+    onClear: handleClearListFilters,
+  });
+
+  const exportFiltersInputs = buildKitchenMealCountExportFilterInputs({
+    filters: exportFilters,
+    messages,
+    onPeriodChange: handleExportPeriodChange,
+    onFromDateChange: handleExportFromDateChange,
+    onToDateChange: handleExportToDateChange,
+    onClear: handleClearExportFilters,
+    trailingActions: (
       <Button
-        onClick={handleClear}
+        variant="outlined"
+        startIcon={<FileDownloadOutlinedIcon />}
+        onClick={handleDownloadExport}
+        disabled={isExporting}
         sx={{
-          color: "text.secondary",
+          height: 36,
+          px: 3,
+          borderRadius: 2,
+          borderColor: "#E2E8F0",
+          color: "#0F172A",
           textTransform: "none",
           fontWeight: 700,
-          "&:hover": { color: "#EF4444", bgcolor: "#FEE2E2" },
-          height: 36,
-          px: 2,
-          borderRadius: 2,
+          "&:hover": { bgcolor: "#F8FAFC" },
         }}
       >
-        Clear filters
+        {isExporting ? "Downloading..." : (messages["common.download"] as string)}
       </Button>
-    </Box>,
-  ];
+    ),
+  });
 
   return (
     <>
@@ -147,8 +197,17 @@ function KitchenMealCountPage() {
                   refetch={refetch}
                   showAdvanceFiltersButton
                   isOpenAdvanceFilters={isOpenAdvanceFilters}
-                  setIsOpenAdvanceFilters={setIsOpenAdvanceFilters}
+                  setIsOpenAdvanceFilters={(open: boolean) => {
+                    setIsOpenAdvanceFilters(open);
+                    if (open) {
+                      setIsOpenExportFilters(false);
+                    }
+                  }}
                   advanceFiltersInputs={advanceFiltersInputs}
+                  isOpenExportFilters={isOpenExportFilters}
+                  exportFiltersInputs={exportFiltersInputs}
+                  showExportFiltersButton
+                  onToggleExportFilters={handleToggleExportFilters}
                 />
               </Grid>
               <Grid item xs={12} mt={4}>

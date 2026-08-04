@@ -2,132 +2,130 @@
 
 import { Box, Grid } from "@mui/material";
 import { ReportColors } from "src/assets/colors/colorSet";
-import CurrencyExchangeIcon from "@mui/icons-material/CurrencyExchange";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-
 import { useIntl } from "react-intl";
-import { useGetClientStatisticsQuery } from "src/pages/dashboard/services/api";
+import { useGetClientsReportSummaryQuery } from "src/pages/dashboard/services/api";
+import { DashboardReportRequest } from "src/pages/dashboard/dashboardFilterHelpers";
 import LoadingAndErrorWrapper from "src/Components/baseComponents/other/LoadingAndErrorWrapper";
-import InfoWidget from "src/Components/dashboard/InfoWidget";
 import MinPieChart from "src/Components/dashboard/minPieChart";
 import StatsCard from "src/Components/dashboard/StatsCard";
 import StatisticsBaseTitle from "src/Components/dashboard/StatisticsBaseTitle";
-const ClientStatistics = () => {
+import ClientPaymentSummary from "./ClientPaymentSummary";
+
+interface ClientStatisticsProps {
+  reportParams?: DashboardReportRequest;
+  titleAction?: React.ReactNode;
+  filtersPanel?: React.ReactNode;
+}
+
+const ClientStatistics = ({
+  reportParams = {},
+  titleAction,
+  filtersPanel,
+}: ClientStatisticsProps) => {
   const { messages } = useIntl();
 
-  const { data, isLoading } = useGetClientStatisticsQuery({
+  const { data, isLoading } = useGetClientsReportSummaryQuery({
     id: "",
+    ...reportParams,
   });
-  const clientStatistics = data?.data;
+  const summary = data?.data;
+
   return (
-    <LoadingAndErrorWrapper isLoading={isLoading} errorMessage=''>
-      {clientStatistics && (
+    <LoadingAndErrorWrapper isLoading={isLoading} errorMessage="">
+      {summary && (
         <Box mb={8}>
-          <StatisticsBaseTitle title='sidebar.clients' />
+          <StatisticsBaseTitle title="sidebar.clients" endAdornment={titleAction} />
+          {filtersPanel}
           <Grid container spacing={4}>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <StatsCard
                 data={{
                   color: ReportColors.green,
                   icon: "group",
-                  value: clientStatistics.clients,
-                  name: "sidebar.clients",
+                  value: summary.totalClients,
+                  name: "dashboard.totalClients",
                 }}
               />
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
+              <StatsCard
+                data={{
+                  color: ReportColors.teal,
+                  icon: "verified_user",
+                  value: summary.activeClients,
+                  name: "dashboard.activeClients",
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
+              <StatsCard
+                data={{
+                  color: ReportColors.orange,
+                  icon: "person_off",
+                  value: summary.inactiveClients,
+                  name: "dashboard.inactiveClients",
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
+              <StatsCard
+                data={{
+                  color: ReportColors.red,
+                  icon: "delete",
+                  value: summary.deletedAccounts,
+                  name: "dashboard.deletedAccounts",
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <StatsCard
                 data={{
                   color: ReportColors.blue,
                   icon: "man",
-                  value: clientStatistics.maleCount,
+                  value: summary.byGender?.Male ?? 0,
                   name: "common.gender.Males",
                 }}
               />
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <StatsCard
                 data={{
                   color: ReportColors.pink,
                   icon: "woman",
-                  value: clientStatistics.femaleCount,
+                  value: summary.byGender?.Female ?? 0,
                   name: "common.gender.Females",
                 }}
               />
             </Grid>
-            <Grid item xs={3}>
-              <StatsCard
-                data={{
-                  color: ReportColors.orange,
-                  icon: <CurrencyExchangeIcon />,
-                  value: clientStatistics.subscriptions,
-                  name: "dashboard.subscriptions",
-                }}
-              />
-            </Grid>
 
-            <Grid item xs={3}>
-              <InfoWidget
-                data={{
-                  count: clientStatistics.totalPaymentsLastMonth,
-                  icon: <TrendingUpIcon fontSize='large' />,
-                  title: "report.totalPaymentsLastMonth",
-                  color: ReportColors.teal,
-                }}
-              />
+            <Grid item xs={12} md={5}>
+              <ClientPaymentSummary byPaymentMethod={summary.byPaymentMethod} />
             </Grid>
-
-            <Grid item xs={4.5}>
+            <Grid item xs={12} md={7}>
               <MinPieChart
-                title='clinets.report.clientsByDietitianGoal'
+                title="clinets.report.clientsByDietitianGoal"
                 data={[
                   {
                     color: ReportColors.green,
                     title: String(messages["clients.dietitianGoal.GainWeight"]),
-                    value: clientStatistics.clientsByDietitianGoal.GainWeight,
+                    value: summary.byDietitianGoal?.GainWeight ?? 0,
                   },
                   {
                     color: ReportColors.red,
                     title: String(messages["clients.dietitianGoal.LoseWeight"]),
-                    value: clientStatistics.clientsByDietitianGoal.LoseWeight,
+                    value: summary.byDietitianGoal?.LoseWeight ?? 0,
                   },
                   {
                     color: ReportColors.purple,
-                    title: String(messages["clients.dietitianGoal.BuildMuscles"]),
-                    value: clientStatistics.clientsByDietitianGoal.BuildMuscles,
+                    title: String(
+                      messages["clients.dietitianGoal.BuildMuscles"]
+                    ),
+                    value: summary.byDietitianGoal?.BuildMuscles ?? 0,
                   },
                   {
                     color: ReportColors.teal,
                     title: String(messages["clients.dietitianGoal.LoseFat"]),
-                    value: clientStatistics.clientsByDietitianGoal.LoseFat,
-                  },
-                ]}
-              />
-            </Grid>
-            <Grid item xs={4.5}>
-              <MinPieChart
-                title='clinets.report.subscriptionsByType'
-                data={[
-                  {
-                    color: ReportColors.teal,
-                    title: String(
-                      messages["subscriptionPlans.subscriptionType.OneWeek"]
-                    ),
-                    value: clientStatistics.subscriptionsByType.OneWeek,
-                  },
-                  {
-                    color: ReportColors.purple,
-                    title: String(
-                      messages["subscriptionPlans.subscriptionType.OneMonth"]
-                    ),
-                    value: clientStatistics.subscriptionsByType.OneMonth,
-                  },
-                  {
-                    color: ReportColors.orange,
-                    title: String(
-                      messages["subscriptionPlans.subscriptionType.ThreeMonths"]
-                    ),
-                    value: clientStatistics.subscriptionsByType.ThreeMonths,
+                    value: summary.byDietitianGoal?.LoseFat ?? 0,
                   },
                 ]}
               />

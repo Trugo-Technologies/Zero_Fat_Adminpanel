@@ -19,6 +19,10 @@ const DurationBadge: React.FC<IProps> = (props) => {
         return {
           color: "#a5d060",
         };
+      case Duration.Repeating:
+        return {
+          color: "#000",
+        };
 
       default:
         return {

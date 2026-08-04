@@ -19,45 +19,22 @@ import AppFilters from "src/Components/baseComponents/filters/AppFilters";
 import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
-import { Duration } from "src/types/modules/clientsManagement/discounts/discountRules";
+import {
+  ALL_DURATIONS,
+  ALL_STATUS,
+  DURATION_OPTIONS,
+  DiscountRuleAppliedFilters,
+  buildDiscountRuleFilterQueryParams,
+  createDefaultDiscountRuleFilters,
+  dateInputSx,
+  selectSx,
+} from "./discountRuleFilterHelpers";
 import {
   useActiveAllDiscountRulesMutation,
   useDeleteAllDiscountRulesMutation,
   useGetAllDiscountRulesQuery,
 } from "./services/api";
 import useDiscountRules from "./useDiscountRules";
-
-const ALL_DURATIONS = "All Durations";
-const ALL_STATUS = "All Status";
-
-const selectSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
-
-const dateInputSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
-
-const DURATION_OPTIONS = [
-  { value: Duration.Once, labelKey: "discountRules.duration.Once" },
-  { value: Duration.Repeating, labelKey: "discountRules.duration.Repeating" },
-  { value: Duration.Forever, labelKey: "discountRules.duration.Forever" },
-] as const;
-
-type AppliedFilters = {
-  startDate: string;
-  endDate: string;
-  duration: string;
-  status: string;
-};
 
 function DiscountRulesPage() {
   const { messages } = useIntl();
@@ -89,97 +66,103 @@ function DiscountRulesPage() {
     useActiveAllDiscountRulesMutation();
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
-    startDate: "",
-    endDate: "",
-    duration: ALL_DURATIONS,
-    status: ALL_STATUS,
-  });
+  const [appliedFilters, setAppliedFilters] = useState<DiscountRuleAppliedFilters>(
+    createDefaultDiscountRuleFilters
+  );
 
   const syncFiltersToQuery = useCallback(
-    (filters: AppliedFilters) => {
+    (filters: DiscountRuleAppliedFilters) => {
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-        duration:
-          filters.duration === ALL_DURATIONS ? undefined : filters.duration,
-        isActive:
-          filters.status === "Active"
-            ? true
-            : filters.status === "Inactive"
-              ? false
-              : undefined,
+        ...buildDiscountRuleFilterQueryParams(filters),
       }));
     },
     [setParameter]
   );
 
-  const handleStartDateChange = (value: string) => {
-    const next = { ...appliedFilters, startDate: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next);
-  };
-
-  const handleEndDateChange = (value: string) => {
-    const next = { ...appliedFilters, endDate: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next);
-  };
-
-  const handleDurationChange = (value: string) => {
-    const next = { ...appliedFilters, duration: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next);
-  };
-
-  const handleStatusChange = (value: string) => {
-    const next = { ...appliedFilters, status: value };
+  const updateFilter = <K extends keyof DiscountRuleAppliedFilters>(
+    key: K,
+    value: DiscountRuleAppliedFilters[K]
+  ) => {
+    const next = { ...appliedFilters, [key]: value };
     setAppliedFilters(next);
     syncFiltersToQuery(next);
   };
 
   const handleClear = () => {
-    const cleared: AppliedFilters = {
-      startDate: "",
-      endDate: "",
-      duration: ALL_DURATIONS,
-      status: ALL_STATUS,
-    };
+    const cleared = createDefaultDiscountRuleFilters();
     setAppliedFilters(cleared);
     setParameter((prev) => {
-      const { startDate, endDate, duration, isActive, ...rest } = prev;
+      const {
+        startDateFrom,
+        startDateTo,
+        expirationDateFrom,
+        expirationDateTo,
+        duration,
+        isActive,
+        startDate,
+        endDate,
+        ...rest
+      } = prev;
       return { ...rest, pageNumber: 1 };
     });
   };
 
   const advanceFiltersInputs = [
-    <Box key="startDate">
+    <Box key="startDateFrom">
       <Typography
         sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
       >
-        {messages["common.startDate"] as string}
+        {messages["discountRules.filter.startDateFrom"] as string}
       </Typography>
       <OutlinedInput
         type="date"
         size="small"
-        value={appliedFilters.startDate}
-        onChange={(e) => handleStartDateChange(e.target.value)}
+        value={appliedFilters.startDateFrom}
+        onChange={(e) => updateFilter("startDateFrom", e.target.value)}
         sx={dateInputSx}
       />
     </Box>,
-    <Box key="endDate">
+    <Box key="startDateTo">
       <Typography
         sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
       >
-        {messages["common.endDate"] as string}
+        {messages["discountRules.filter.startDateTo"] as string}
       </Typography>
       <OutlinedInput
         type="date"
         size="small"
-        value={appliedFilters.endDate}
-        onChange={(e) => handleEndDateChange(e.target.value)}
+        value={appliedFilters.startDateTo}
+        onChange={(e) => updateFilter("startDateTo", e.target.value)}
+        sx={dateInputSx}
+      />
+    </Box>,
+    <Box key="expirationDateFrom">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["discountRules.filter.expirationDateFrom"] as string}
+      </Typography>
+      <OutlinedInput
+        type="date"
+        size="small"
+        value={appliedFilters.expirationDateFrom}
+        onChange={(e) => updateFilter("expirationDateFrom", e.target.value)}
+        sx={dateInputSx}
+      />
+    </Box>,
+    <Box key="expirationDateTo">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["discountRules.filter.expirationDateTo"] as string}
+      </Typography>
+      <OutlinedInput
+        type="date"
+        size="small"
+        value={appliedFilters.expirationDateTo}
+        onChange={(e) => updateFilter("expirationDateTo", e.target.value)}
         sx={dateInputSx}
       />
     </Box>,
@@ -192,7 +175,7 @@ function DiscountRulesPage() {
       <Select
         size="small"
         value={appliedFilters.duration}
-        onChange={(e) => handleDurationChange(e.target.value)}
+        onChange={(e) => updateFilter("duration", e.target.value)}
         sx={{ ...selectSx, minWidth: 160 }}
       >
         <MenuItem value={ALL_DURATIONS} sx={{ fontSize: 13 }}>
@@ -214,7 +197,7 @@ function DiscountRulesPage() {
       <Select
         size="small"
         value={appliedFilters.status}
-        onChange={(e) => handleStatusChange(e.target.value)}
+        onChange={(e) => updateFilter("status", e.target.value)}
         sx={selectSx}
       >
         <MenuItem value={ALL_STATUS} sx={{ fontSize: 13 }}>
@@ -268,7 +251,7 @@ function DiscountRulesPage() {
                   ) => {
                     setSearchValue(event.target.value);
                   }}
-                  successUrl={`${endPoints.discountRules().pathname}/search`}
+                  successUrl={`${endPoints.discountRules().pathname}/filter`}
                   selectionModel={selectionModel as string[]}
                   setSelectionModel={setSelectionModel}
                   refetch={refetch}

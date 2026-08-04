@@ -5,20 +5,35 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import { alpha, Box, IconButton, Stack, Typography, Menu, MenuItem } from "@mui/material";
+import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
+import { alpha, Box, Button, CircularProgress, FormControlLabel, IconButton, Stack, Switch, Typography, Menu, MenuItem } from "@mui/material";
 import dayjs, { Dayjs } from "dayjs";
-import { useMemo, ReactNode, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
+import { IDeliveryCalendarPauseStatus, IDeliveryCalendarSummary } from "src/types/modules/clientsManagement/clientAccountAccess";
 import DeliveryCalendar from "../components/DeliveryCalendar";
+import { DELIVERY_CALENDAR_STATUS_FILTERS, DeliveryCalendarStatusFilter } from "../deliveryCalendarStatuses";
+import { mapDeliveryCalendarSummaryToStats } from "../mapDeliveryCalendar";
 import { DeliveryDay } from "../types";
 
 type Props = {
   month: Dayjs;
   deliveries: DeliveryDay[];
+  summary?: IDeliveryCalendarSummary;
   selectedDelivery: DeliveryDay | null;
+  statusFilter: DeliveryCalendarStatusFilter;
+  onStatusFilterChange: (status: DeliveryCalendarStatusFilter) => void;
   onMonthChange: (month: Dayjs) => void;
   onDayClick: (delivery: DeliveryDay) => void;
+  isLoading?: boolean;
+  useClientSideStatusFilter?: boolean;
+  canBypassCutoff?: boolean;
+  bypassCutoffEnabled?: boolean;
+  onBypassCutoffEnabledChange?: (enabled: boolean) => void;
+  pauseStatus?: IDeliveryCalendarPauseStatus | null;
+  onResumeClick?: () => void;
 };
 
 const MetricCard = ({ title, value, icon, color }: { title: string; value: number; icon: ReactNode; color: string }) => (
@@ -60,51 +75,152 @@ const MetricCard = ({ title, value, icon, color }: { title: string; value: numbe
   </Box>
 );
 
-const DeliveryCalendarTab = ({ month, deliveries, selectedDelivery, onMonthChange, onDayClick }: Props) => {
-  const [statusFilter, setStatusFilter] = useState<string>("All Status");
+const DeliveryCalendarTab = ({
+  month,
+  deliveries,
+  summary,
+  selectedDelivery,
+  statusFilter,
+  onStatusFilterChange,
+  onMonthChange,
+  onDayClick,
+  isLoading = false,
+  useClientSideStatusFilter = false,
+  canBypassCutoff = false,
+  bypassCutoffEnabled = false,
+  onBypassCutoffEnabledChange,
+  pauseStatus = null,
+  onResumeClick,
+}: Props) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const stats = useMemo(() => {
+    if (summary) {
+      return mapDeliveryCalendarSummaryToStats(summary);
+    }
+
     return {
       Delivered: deliveries.filter((d) => d.status === "Delivered").length,
       Pending: deliveries.filter((d) => d.status === "Pending").length,
       Skipped: deliveries.filter((d) => d.status === "Skipped").length,
       Moved: deliveries.filter((d) => d.status === "Moved").length,
+      Cancelled: deliveries.filter((d) => d.status === "Cancelled").length,
     };
-  }, [deliveries]);
+  }, [deliveries, summary]);
 
   const filteredDeliveries = useMemo(() => {
-    if (statusFilter === "All Status") return deliveries;
+    if (!useClientSideStatusFilter || statusFilter === "All Status") {
+      return deliveries;
+    }
+
     return deliveries.filter((d) => d.status === statusFilter);
-  }, [deliveries, statusFilter]);
+  }, [deliveries, statusFilter, useClientSideStatusFilter]);
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: "#FFFFFF", borderRadius: "24px" }}>
-      {/* Header */}
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
-        <Box
-          sx={{
-            width: 48,
-            height: 48,
-            borderRadius: "12px",
-            bgcolor: alpha("#10B981", 0.1),
-            color: "#10B981",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <CalendarTodayOutlinedIcon />
-        </Box>
-        <Box>
-          <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#1A2B48" }}>Delivery Calendar</Typography>
-          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-            Track and manage daily meal delivery status
-          </Typography>
-        </Box>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="flex-start"
+        spacing={2}
+        sx={{ mb: 4 }}
+      >
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: "12px",
+              bgcolor: alpha("#10B981", 0.1),
+              color: "#10B981",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CalendarTodayOutlinedIcon />
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#1A2B48" }}>
+              Delivery Calendar
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+              Track and manage daily meal delivery status
+            </Typography>
+          </Box>
+        </Stack>
+        {canBypassCutoff ? (
+          <FormControlLabel
+            sx={{ m: 0, flexShrink: 0, pt: 0.5 }}
+            control={
+              <Switch
+                checked={bypassCutoffEnabled}
+                onChange={(e) => onBypassCutoffEnabledChange?.(e.target.checked)}
+                color="warning"
+              />
+            }
+            label={
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1A2B48" }}>
+                Disable Validation
+              </Typography>
+            }
+          />
+        ) : null}
       </Stack>
 
-      {/* Controls */}
+      {pauseStatus?.isPaused ? (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          gap={2}
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: "16px",
+            border: `1px solid ${alpha("#F59E0B", 0.35)}`,
+            bgcolor: alpha("#F59E0B", 0.08),
+          }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <PauseCircleOutlineIcon sx={{ color: "#F59E0B" }} />
+            <Box>
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1A2B48" }}>
+                Deliveries are paused
+                {pauseStatus.pauseDate
+                  ? ` since ${dayjs(pauseStatus.pauseDate).format("MMM D, YYYY")}`
+                  : ""}
+              </Typography>
+              <Typography sx={{ fontSize: 12.5, color: "text.secondary" }}>
+                {pauseStatus.pausedDayCount > 0
+                  ? `${pauseStatus.pausedDayCount} paused ${
+                      pauseStatus.pausedDayCount === 1 ? "day" : "days"
+                    }. `
+                  : ""}
+                {pauseStatus.maxAllowedResumeDate
+                  ? `Resume allowed until ${dayjs(pauseStatus.maxAllowedResumeDate).format("MMM D, YYYY")}.`
+                  : ""}
+              </Typography>
+            </Box>
+          </Stack>
+          <Button
+            variant="contained"
+            onClick={onResumeClick}
+            sx={{
+              bgcolor: "#F59E0B",
+              color: "#FFFFFF",
+              fontWeight: 700,
+              borderRadius: "10px",
+              px: 3,
+              flexShrink: 0,
+              "&:hover": { bgcolor: "#D97706" },
+            }}
+          >
+            Resume Delivery
+          </Button>
+        </Stack>
+      ) : null}
+
       <Stack direction="row" justifyContent="space-between" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <IconButton
@@ -122,15 +238,12 @@ const DeliveryCalendarTab = ({ month, deliveries, selectedDelivery, onMonthChang
               display: "flex",
               alignItems: "center",
               gap: 1,
-              cursor: "pointer",
-              "&:hover": { bgcolor: "#F8FAFC" },
             }}
           >
             <CalendarTodayOutlinedIcon fontSize="small" sx={{ color: "text.secondary" }} />
             <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1A2B48", minWidth: 110, textAlign: "center" }}>
               {month.format("MMMM YYYY")}
             </Typography>
-            <KeyboardArrowDownIcon fontSize="small" sx={{ color: "text.secondary" }} />
           </Box>
           <IconButton
             sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", color: "text.primary" }}
@@ -180,11 +293,11 @@ const DeliveryCalendarTab = ({ month, deliveries, selectedDelivery, onMonthChang
             onClose={() => setAnchorEl(null)}
             PaperProps={{ sx: { mt: 1, borderRadius: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" } }}
           >
-            {["All Status", "Delivered", "Pending", "Skipped", "Moved"].map((status) => (
+            {DELIVERY_CALENDAR_STATUS_FILTERS.map((status) => (
               <MenuItem
                 key={status}
                 onClick={() => {
-                  setStatusFilter(status);
+                  onStatusFilterChange(status);
                   setAnchorEl(null);
                 }}
                 sx={{ fontSize: 14, fontWeight: 500, minWidth: 150 }}
@@ -196,25 +309,29 @@ const DeliveryCalendarTab = ({ month, deliveries, selectedDelivery, onMonthChang
         </Stack>
       </Stack>
 
-      {/* Analytics */}
       <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mb: 4 }}>
         <MetricCard title="Delivered" value={stats.Delivered} icon={<CheckCircleOutlineIcon />} color="#10B981" />
-        <MetricCard title="Pending" value={stats.Pending} icon={<AccessTimeIcon />} color="#F59E0B" />
+        <MetricCard title="Scheduled" value={stats.Pending} icon={<AccessTimeIcon />} color="#F59E0B" />
         <MetricCard title="Skipped" value={stats.Skipped} icon={<RemoveCircleOutlineIcon />} color="#64748B" />
         <MetricCard title="Moved" value={stats.Moved} icon={<SwapHorizIcon />} color="#3B82F6" />
+        <MetricCard title="Cancelled" value={stats.Cancelled} icon={<CancelOutlinedIcon />} color="#EF4444" />
       </Stack>
 
-      {/* Calendar Grid */}
-      <DeliveryCalendar
-        month={month}
-        deliveries={filteredDeliveries}
-        selectedDate={selectedDelivery?.date ?? null}
-        onMonthChange={onMonthChange}
-        onDayClick={onDayClick}
-      />
+      {isLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <DeliveryCalendar
+          month={month}
+          deliveries={filteredDeliveries}
+          selectedDate={selectedDelivery?.date ?? null}
+          onMonthChange={onMonthChange}
+          onDayClick={onDayClick}
+        />
+      )}
     </Box>
   );
 };
 
 export default DeliveryCalendarTab;
-

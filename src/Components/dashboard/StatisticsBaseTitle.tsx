@@ -7,22 +7,33 @@ import IntlMessages from "src/@crema/helpers/IntlMessages";
 
 interface Props {
   title: string;
+  endAdornment?: React.ReactNode;
 }
 
 const StatisticsBaseTitle: React.FC<Props> = (props) => {
-  const { title } = props;
+  const { title, endAdornment } = props;
 
   return (
     <Box
-      component='h2'
       sx={{
-        color: "text.primary",
-        fontSize: 17,
-        textTransform: "uppercase",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
         mb: 4,
-        fontWeight: Fonts.BOLD,
-      }}>
-      <IntlMessages id={title} />
+      }}
+    >
+      <Box
+        component='h2'
+        sx={{
+          color: "text.primary",
+          fontSize: 17,
+          textTransform: "uppercase",
+          mb: 0,
+          fontWeight: Fonts.BOLD,
+        }}>
+        <IntlMessages id={title} />
+      </Box>
+      {endAdornment}
     </Box>
   );
 };

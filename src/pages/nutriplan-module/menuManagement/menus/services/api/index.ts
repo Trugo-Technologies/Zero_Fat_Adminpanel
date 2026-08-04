@@ -9,6 +9,7 @@ import {
   IMenusDetailsDto,
   IMenusListDto,
 } from "src/types/modules/nutriplan/menuManagement/menus";
+import { buildMenusFilterRequest } from "../../menuFilterHelpers";
 
 const apiService = api
   .enhanceEndpoints({ addTagTypes: ["nutrientsAttributes"] })
@@ -16,13 +17,11 @@ const apiService = api
     endpoints: ({ query, mutation }) => ({
       getAllMenus: query<IMenusListDto, ArgsType>({
         providesTags: ["menus"],
-        query: (props) => {
-          return {
-            url: `${endPoints.menus().pathname}/search`,
-            method: "POST",
-            data: props,
-          };
-        },
+        query: (props) => ({
+          url: `${endPoints.menus().pathname}/filter`,
+          method: "GET",
+          params: buildMenusFilterRequest(props),
+        }),
       }),
 
       addMenu: mutation<void, any>({

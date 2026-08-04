@@ -10,6 +10,7 @@ import AppButton from "src/Components/baseComponents/buttons/AppButton";
 import { useState } from "react";
 import EditClientPortalSettings from "src/Components/clients-module/clientPortalSettings/EditClientPortalSettings";
 import LoadingAndErrorWrapper from "src/Components/baseComponents/other/LoadingAndErrorWrapper";
+import { formatCutoffTimeDisplay } from "src/pages/clients-module/clientAccountAccess/deliveryCutoff";
 
 function ClientPortalSettingsPage() {
   const { messages } = useIntl();
@@ -136,6 +137,14 @@ function ClientPortalSettingsPage() {
                       value={
                         clientPortalSettingsItem?.data?.offsetSubscriptionInDays
                       }
+                      column={4}
+                    />
+
+                    <AppItemView
+                      label='clientPortalSettings.cutoffTime'
+                      value={formatCutoffTimeDisplay(
+                        clientPortalSettingsItem?.data?.cutoffTime
+                      )}
                       column={4}
                     />
                   </Grid>

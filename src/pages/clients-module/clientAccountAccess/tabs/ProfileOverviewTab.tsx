@@ -19,6 +19,7 @@ import {
   alpha,
   Box,
   Chip,
+  CircularProgress,
   Grid,
   LinearProgress,
   Stack,
@@ -40,12 +41,20 @@ import KpiStatCard from "../components/profile/KpiStatCard";
 import ProfileHero from "../components/profile/ProfileHero";
 import ProfileInfoCard from "../components/profile/ProfileInfoCard";
 import WeightProgress from "../components/profile/WeightProgress";
+import { canRenewSubscription, getSubscriptionStatusChipColor } from "../mapClientAccountData";
+import { useStartSubscriptionWizardMutation } from "../services/api";
 import { ClientAccountData } from "../types";
 
 type Props = {
   client: ClientAccountData;
-  onBlock: (type: "oneDay" | "custom" | "permanent", expiry?: Dayjs) => void;
-  onUnblock: () => void;
+  clientId?: string | null;
+  onBlock: (
+    type: "oneDay" | "custom" | "permanent",
+    expiry?: Dayjs
+  ) => void | Promise<void>;
+  onUnblock: () => void | Promise<void>;
+  isBlocking?: boolean;
+  isUnblocking?: boolean;
   onEdit: () => void;
   onSendNotification: () => void;
 };
@@ -54,8 +63,11 @@ const allergenColors = ["#E57373", "#64B5F6", "#FFB74D", "#81C784", "#BA68C8"];
 
 const ProfileOverviewTab = ({
   client,
+  clientId,
   onBlock,
   onUnblock,
+  isBlocking = false,
+  isUnblocking = false,
   onEdit,
   onSendNotification,
 }: Props) => {
@@ -63,6 +75,11 @@ const ProfileOverviewTab = ({
   const navigate = useNavigate();
   const { messages } = useIntl();
   const accessRef = useRef<HTMLDivElement>(null);
+  const [startSubscriptionWizard, { isLoading: isStartingWizard }] =
+    useStartSubscriptionWizardMutation();
+
+  const shouldRenewSubscription = canRenewSubscription(client);
+  const wizardMode = shouldRenewSubscription ? "Renew" : "New";
 
   const goalProgress = Math.min(
     100,
@@ -74,6 +91,38 @@ const ProfileOverviewTab = ({
     gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr 1fr 1fr" },
     columnGap: 2,
     rowGap: 0,
+  };
+
+  const formatSubscriptionDate = (value?: string) =>
+    value ? dayjs(value).format("MMM D, YYYY") : "—";
+
+  const subscriptionStatusColor = getSubscriptionStatusChipColor(
+    client.subscriptionStatus
+  );
+
+  const handleSubscriptionAction = async () => {
+    if (!clientId) return;
+
+    try {
+      const response = await startSubscriptionWizard({
+        clientId,
+        wizardMode,
+      }).unwrap();
+
+      const draftId = response?.data?.id;
+      const params = new URLSearchParams({
+        clientId,
+        wizardMode,
+      });
+
+      if (draftId) {
+        params.set("draftId", draftId);
+      }
+
+      navigate(`/clientsManagement/createSubscription?${params.toString()}`);
+    } catch {
+      // Errors are handled in the mutation.
+    }
   };
 
   return (
@@ -198,9 +247,8 @@ const ProfileOverviewTab = ({
                 <Chip
                   label={client.subscriptionStatus}
                   size="small"
+                  color={subscriptionStatusColor}
                   sx={{
-                    bgcolor: client.subscriptionStatus === "Active" ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1),
-                    color: client.subscriptionStatus === "Active" ? "success.main" : "error.main",
                     fontWeight: 700,
                     borderRadius: 1.5,
                   }}
@@ -210,20 +258,28 @@ const ProfileOverviewTab = ({
               <DataField label={<IntlMessages id="clientAccountAccess.summary.activeMealPlan" />} value={<Typography sx={{ fontWeight: 800, fontSize: 16, color: "primary.main" }}>{client.activeMealPlan}</Typography>} />
               <DataField label={<IntlMessages id="clientAccountAccess.summary.calories" />} value={`${client.calories} kcal`} />
               <DataField label={<IntlMessages id="clientAccountAccess.summary.mealsPerDay" />} value={client.mealsPerDay} />
-              <DataField label={<IntlMessages id="clientAccountAccess.subscriptionStart" />} value={dayjs(client.subscriptionStartDate).format("MMM D, YYYY")} />
-              <DataField label={<IntlMessages id="clientAccountAccess.subscriptionEnd" />} value={dayjs(client.subscriptionEndDate).format("MMM D, YYYY")} />
+              <DataField label={<IntlMessages id="clientAccountAccess.subscriptionStart" />} value={formatSubscriptionDate(client.subscriptionStartDate)} />
+              <DataField label={<IntlMessages id="clientAccountAccess.subscriptionEnd" />} value={formatSubscriptionDate(client.subscriptionEndDate)} />
               <DataField label={<IntlMessages id="clientAccountAccess.summary.remainingDays" />} value={client.remainingDays} />
               <DataField label={<IntlMessages id="clientAccountAccess.summary.totalDelivered" />} value={client.totalDeliveredMeals} />
               
               <Box sx={{ mt: 3 }}>
                 <Button 
+                  type="button"
                   variant="outlined" 
                   fullWidth 
                   size="medium" 
-                  onClick={() => navigate("/clientsManagement/createSubscription")}
+                  onClick={handleSubscriptionAction}
+                  disabled={!clientId || isStartingWizard}
                   sx={{ borderRadius: 2, fontWeight: 700, borderWidth: 2, "&:hover": { borderWidth: 2 } }}
                 >
-                  {client.subscriptionStatus === "Active" ? "Manage Subscription" : "Renew Subscription"}
+                  {isStartingWizard ? (
+                    <CircularProgress size={22} />
+                  ) : shouldRenewSubscription ? (
+                    <IntlMessages id="clientAccountAccess.renewSubscription" />
+                  ) : (
+                    <IntlMessages id="clientAccountAccess.createSubscription" />
+                  )}
                 </Button>
               </Box>
             </ProfileInfoCard>
@@ -295,7 +351,13 @@ const ProfileOverviewTab = ({
             </ProfileInfoCard>
 
             <Box ref={accessRef} sx={{ pt: 2 }}>
-              <AccessControlCard client={client} onUnblock={onUnblock} onBlock={onBlock} />
+              <AccessControlCard
+                client={client}
+                onUnblock={onUnblock}
+                onBlock={onBlock}
+                isBlocking={isBlocking}
+                isUnblocking={isUnblocking}
+              />
             </Box>
           </Stack>
         </Grid>

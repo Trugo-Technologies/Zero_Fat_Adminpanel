@@ -1,7 +1,35 @@
-import { useState, useMemo } from "react";
-import { Box, Card, Grid, Step, StepLabel, Stepper, Typography, Button, Stack, alpha } from "@mui/material";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Box, Card, CircularProgress, Grid, Step, StepLabel, Stepper, Typography, Button, Stack, alpha } from "@mui/material";
 import dayjs, { Dayjs } from "dayjs";
 import AppBreadcrumb from "src/Components/baseComponents/breadcrumb/AppBreadcrumb";
+import {
+  useGetClientAccountAccessQuery,
+  useGetSubscriptionWizardDraftQuery,
+  useGetSubscriptionWizardPreviewQuery,
+  useUpdateSubscriptionWizardConfigurationMutation,
+  useUpdateSubscriptionWizardRenewalOptionsMutation,
+  useUpdateSubscriptionWizardScheduleMutation,
+  useUpdateSubscriptionWizardBillingMutation,
+  useSaveSubscriptionWizardDraftMutation,
+  useFinalizeSubscriptionWizardMutation,
+} from "./services/api";
+import { canRenewSubscription, mapClientAccountAccessToClientData } from "./mapClientAccountData";
+import {
+  buildBillingPayload,
+  buildConfigurationPayload,
+  buildFinalizePayload,
+  buildRenewalOptionsPayload,
+  buildSchedulePayload,
+  mapSubscriptionWizardDraftToFormState,
+} from "./mapSubscriptionWizardDraft";
+import { ISubscriptionWizardMealTypeSelection, SubscriptionWizardPaymentProvider } from "src/types/modules/clientsManagement/clientAccountAccess";
+import { PreferredDeliveryTime } from "src/types/modules/clientsManagement/clientSubscriptions";
+import { useGetActiveMealPlansQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
+import { getMealTypeSelectionsTotalCalories } from "./mealPlanHelpers";
+import { showErrorToasts, showSuccessToasts } from "src/Components/toasts";
+import { RenewalStrategyUi } from "./mapSubscriptionWizardDraft";
+import { DEFAULT_SELECTED_WEEKDAYS, getFirstAvailableDeliveryDate, getMinDeliveryDatesForDuration } from "./subscriptionWizardSchedule";
 
 import Step0RenewalStrategy from "./components/createSubscription/Step0RenewalStrategy";
 import Step1Configuration from "./components/createSubscription/Step1Configuration";
@@ -10,26 +38,89 @@ import Step5Billing from "./components/createSubscription/Step5Billing";
 import { CartItem } from "./components/createSubscription/Step1Configuration";
 
 const CreateSubscriptionPage = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const draftId = searchParams.get("draftId");
+  const { data: wizardDraftResponse, isLoading: isWizardDraftLoading } =
+    useGetSubscriptionWizardDraftQuery(
+      { draftId: draftId || "" },
+      { skip: !draftId }
+    );
+  const clientId =
+    searchParams.get("clientId") ||
+    wizardDraftResponse?.data?.clientId ||
+    null;
+
+  const { data: clientAccountAccess } = useGetClientAccountAccessQuery(
+    { clientId: clientId || "" },
+    { skip: !clientId }
+  );
+
+  // "New" order type → New only; any other type (e.g. ExistingUser) → New + Renew.
+  const allowRenewMode = useMemo(() => {
+    if (!clientAccountAccess?.data) return false;
+
+    return canRenewSubscription(
+      mapClientAccountAccessToClientData(clientAccountAccess.data)
+    );
+  }, [clientAccountAccess?.data]);
+
+  const { data: mealPlansResponse } = useGetActiveMealPlansQuery();
+  const [updateRenewalOptions, { isLoading: isSavingRenewalOptions }] =
+    useUpdateSubscriptionWizardRenewalOptionsMutation();
+  const [updateConfiguration, { isLoading: isSavingConfiguration }] =
+    useUpdateSubscriptionWizardConfigurationMutation();
+  const [updateSchedule, { isLoading: isSavingSchedule }] =
+    useUpdateSubscriptionWizardScheduleMutation();
+  const [updateBilling, { isLoading: isSavingBilling }] =
+    useUpdateSubscriptionWizardBillingMutation();
+  const [saveWizardDraft, { isLoading: isSavingDraft }] =
+    useSaveSubscriptionWizardDraftMutation();
+  const [finalizeSubscriptionWizard, { isLoading: isFinalizing }] =
+    useFinalizeSubscriptionWizardMutation();
+
   const [activeStep, setActiveStep] = useState(0);
 
-  // Mode Selection
-  const [subscriptionMode, setSubscriptionMode] = useState<"new" | "renew">("new");
+  const [subscriptionMode, setSubscriptionMode] = useState<"new" | "renew">(
+    searchParams.get("wizardMode") === "Renew" ? "renew" : "new"
+  );
+
+  useEffect(() => {
+    if (!allowRenewMode && subscriptionMode === "renew") {
+      setSubscriptionMode("new");
+      setActiveStep(0);
+    }
+  }, [allowRenewMode, subscriptionMode]);
   
   // Step 0: Renewal Strategy (only for renew mode)
   const [renewalStrategy, setRenewalStrategy] = useState<"extend" | "future">("extend");
+  const [scheduledStartDate, setScheduledStartDate] = useState<Dayjs | null>(null);
 
   // Step 1
-  const [selectedPlan, setSelectedPlan] = useState("lean_muscle");
-  const [selectedVariant, setSelectedVariant] = useState("Standard");
-  const [selectedCalories, setSelectedCalories] = useState("1800");
-  const [proteinTarget, setProteinTarget] = useState(160);
-  const [selectedMeals, setSelectedMeals] = useState<string[]>(["Breakfast", "Lunch", "Dinner", "Post Workout"]);
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [mealTypeSelections, setMealTypeSelections] = useState<
+    ISubscriptionWizardMealTypeSelection[]
+  >([]);
 
   // Step 2
   const [duration, setDuration] = useState("1 Month");
-  const [skipSaturdays, setSkipSaturdays] = useState(true);
-  const [skipSundays, setSkipSundays] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs().add(1, "day"));
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>(
+    DEFAULT_SELECTED_WEEKDAYS
+  );
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(
+    searchParams.get("wizardMode") === "Renew"
+      ? null
+      : getFirstAvailableDeliveryDate({
+          selectedWeekdays: DEFAULT_SELECTED_WEEKDAYS,
+        })
+  );
+  const [selectedDeliveryDates, setSelectedDeliveryDates] = useState<string[]>(
+    []
+  );
+  const [preferredDeliveryTime, setPreferredDeliveryTime] = useState<string>(
+    PreferredDeliveryTime.EarlyMorning
+  );
+  const [clientLocationId, setClientLocationId] = useState("");
 
   // Step 3 (not a step anymore, but state needed for addons)
   const [enableAddons, setEnableAddons] = useState(false);
@@ -39,9 +130,44 @@ const CreateSubscriptionPage = () => {
   // Step 5 (now Billing & Review)
   const [promoCode, setPromoCode] = useState("");
   const [manualDiscount, setManualDiscount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Online Payment");
-  const [customerEmail, setCustomerEmail] = useState("sarah.mansouri@email.com");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentProvider, setPaymentProvider] =
+    useState<SubscriptionWizardPaymentProvider>("Stripe");
+  const hasHydratedDraftStep = useRef(false);
+
+  useEffect(() => {
+    hasHydratedDraftStep.current = false;
+  }, [draftId]);
+
+  useEffect(() => {
+    if (!wizardDraftResponse?.data) return;
+
+    const mapped = mapSubscriptionWizardDraftToFormState(wizardDraftResponse.data);
+
+    if (!hasHydratedDraftStep.current) {
+      hasHydratedDraftStep.current = true;
+      setActiveStep(mapped.activeStep);
+      setSubscriptionMode(mapped.subscriptionMode);
+    }
+
+    setRenewalStrategy(mapped.renewalStrategy);
+    setScheduledStartDate(mapped.scheduledStartDate);
+    setSelectedPlan(mapped.selectedPlan);
+    setMealTypeSelections(mapped.mealTypeSelections);
+    setEnableAddons(mapped.enableAddons);
+    setCart(mapped.cart);
+    setDuration(mapped.duration);
+    setSelectedWeekdays(mapped.selectedWeekdays);
+    setSelectedDate(mapped.selectedDate);
+    setSelectedDeliveryDates(mapped.selectedDeliveryDates);
+    setPreferredDeliveryTime(mapped.preferredDeliveryTime);
+    setClientLocationId(mapped.clientLocationId);
+    setPromoCode(mapped.promoCode);
+    setManualDiscount(mapped.manualDiscount);
+    setCustomerEmail(mapped.customerEmail);
+    setPaymentMessage(mapped.paymentMessage);
+  }, [wizardDraftResponse]);
 
   const steps = useMemo(() => {
     return subscriptionMode === "renew" 
@@ -49,39 +175,216 @@ const CreateSubscriptionPage = () => {
       : ["Configuration", "Schedule", "Billing & Review"];
   }, [subscriptionMode]);
 
+  const isBillingStep = steps[activeStep] === "Billing & Review";
+  const { data: previewResponse, isFetching: isPreviewLoading } =
+    useGetSubscriptionWizardPreviewQuery(
+      { draftId: draftId || "" },
+      { skip: !draftId || !isBillingStep }
+    );
+  const preview = previewResponse?.data ?? null;
+
   const handleNext = () => setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
   const handleBack = () => setActiveStep((prev) => Math.max(prev - 1, 0));
 
+  const handleRenewalStrategyChange = (strategy: RenewalStrategyUi) => {
+    if (strategy === "future") {
+      setSelectedDate(null);
+      return;
+    }
+
+    setScheduledStartDate(null);
+  };
+
+  const handleScheduledStartDateChange = (date: Dayjs | null) => {
+    setScheduledStartDate(date);
+
+    if (renewalStrategy === "future") {
+      setSelectedDate(date);
+    }
+  };
+
+  const handleRenewalOptionsNext = async () => {
+    if (!draftId) {
+      handleNext();
+      return;
+    }
+
+    if (renewalStrategy === "future" && !scheduledStartDate) {
+      showErrorToasts("Please select a start date");
+      return;
+    }
+
+    try {
+      await updateRenewalOptions({
+        draftId,
+        data: buildRenewalOptionsPayload(
+          draftId,
+          renewalStrategy,
+          scheduledStartDate
+        ),
+      }).unwrap();
+
+      if (renewalStrategy === "future" && scheduledStartDate) {
+        setSelectedDate(scheduledStartDate);
+      }
+
+      handleNext();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleConfigurationNext = async () => {
+    if (!draftId) {
+      handleNext();
+      return;
+    }
+
+    if (!selectedPlan) {
+      showErrorToasts("Please select a meal plan");
+      return;
+    }
+
+    if (mealTypeSelections.length === 0) {
+      showErrorToasts("Please select at least one meal type");
+      return;
+    }
+
+    if (mealTypeSelections.some((meal) => !meal.mealTypeId)) {
+      showErrorToasts("Please wait for meal types to load");
+      return;
+    }
+
+    const selectedMealPlan = mealPlansResponse?.data?.find(
+      (plan) => plan.id === selectedPlan
+    );
+    const calorieTarget = getMealTypeSelectionsTotalCalories(
+      selectedMealPlan,
+      mealTypeSelections
+    );
+
+    if (calorieTarget <= 0) {
+      showErrorToasts("Please complete your meal selection");
+      return;
+    }
+
+    try {
+      await updateConfiguration({
+        draftId,
+        data: buildConfigurationPayload(draftId, {
+          selectedPlan,
+          calorieTarget,
+          mealTypeSelections,
+          cart,
+        }),
+      }).unwrap();
+      handleNext();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleScheduleNext = async () => {
+    if (!draftId) {
+      handleNext();
+      return;
+    }
+
+    if (selectedDeliveryDates.length === 0) {
+      showErrorToasts("Please select at least one delivery date");
+      return;
+    }
+
+    if (
+      duration !== "Custom" &&
+      (selectedWeekdays.length < 4 || selectedWeekdays.length > 6)
+    ) {
+      showErrorToasts("Please select between 4 and 6 delivery days");
+      return;
+    }
+
+    if (duration !== "Custom") {
+      const minDates = getMinDeliveryDatesForDuration(duration);
+      if (selectedDeliveryDates.length < minDates) {
+        showErrorToasts(
+          `Please select at least ${minDates} delivery date${minDates === 1 ? "" : "s"} for ${duration}.`
+        );
+        return;
+      }
+    }
+
+    if (!clientLocationId) {
+      showErrorToasts("Please select a delivery address");
+      return;
+    }
+
+    try {
+      await updateSchedule({
+        draftId,
+        data: buildSchedulePayload(draftId, {
+          duration,
+          selectedWeekdays,
+          selectedDate,
+          selectedDeliveryDates,
+          preferredDeliveryTime,
+          clientLocationId,
+          promoCode,
+          manualDiscount,
+        }),
+      }).unwrap();
+      handleNext();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!draftId) return;
+
+    try {
+      await saveWizardDraft({ draftId }).unwrap();
+      showSuccessToasts("Draft saved successfully");
+      if (clientId) {
+        navigate(`/clientsManagement/clientAccountAccess?clientId=${clientId}`);
+      }
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleBillingSubmit = async () => {
+    if (!draftId) return;
+
+    if (!customerEmail.trim()) {
+      showErrorToasts("Please enter customer email");
+      return;
+    }
+
+    try {
+      await updateBilling({
+        draftId,
+        data: buildBillingPayload(draftId, customerEmail.trim(), paymentMessage),
+      }).unwrap();
+
+      await finalizeSubscriptionWizard({
+        draftId,
+        data: buildFinalizePayload(draftId, paymentProvider),
+      }).unwrap();
+
+      showSuccessToasts("Payment link sent successfully");
+      if (clientId) {
+        navigate(`/clientsManagement/clientAccountAccess?clientId=${clientId}`);
+      }
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
   const handleModeSwitch = (mode: "new" | "renew") => {
+    if (mode === "renew" && !allowRenewMode) return;
     setSubscriptionMode(mode);
     setActiveStep(0); // Reset stepper on mode change
   };
-
-  // Derivations for Summary
-  const planTitles: Record<string, string> = {
-    lean_muscle: "Lean Muscle",
-    weight_loss: "Weight Loss",
-    keto_balance: "Keto Balance"
-  };
-  const basePrices: Record<string, number> = {
-    lean_muscle: 850,
-    weight_loss: 750,
-    keto_balance: 820
-  };
-
-  const planBasePrice = basePrices[selectedPlan] || 0;
-  const addonsCost = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const subtotal = planBasePrice + addonsCost;
-  
-  // Auto Amount Calculation: 10% loyalty discount for renewing!
-  const renewalDiscount = subscriptionMode === "renew" ? subtotal * 0.10 : 0;
-  
-  const manualDisc = parseFloat(manualDiscount) || 0;
-  const promoDisc = promoCode === "SUMMER20" ? 170 : 0;
-  
-  const discountAmount = manualDisc + promoDisc + renewalDiscount;
-  const vat = (subtotal - discountAmount) * 0.05;
-  const total = subtotal - discountAmount + vat;
 
   const renderActiveStepComponent = () => {
     const currentStepLabel = steps[activeStep];
@@ -90,25 +393,27 @@ const CreateSubscriptionPage = () => {
       case "Renewal Options":
         return (
           <Step0RenewalStrategy 
+            hasActiveSubscription={wizardDraftResponse?.data?.hasActiveSubscription}
+            activeMealPlanName={wizardDraftResponse?.data?.activeMealPlanName}
+            activeSubscriptionEndDate={wizardDraftResponse?.data?.activeSubscriptionEndDate}
             renewalStrategy={renewalStrategy}
             setRenewalStrategy={setRenewalStrategy}
-            onNext={handleNext}
+            scheduledStartDate={scheduledStartDate}
+            setScheduledStartDate={handleScheduledStartDateChange}
+            onRenewalStrategyChange={handleRenewalStrategyChange}
+            onNext={handleRenewalOptionsNext}
+            isSaving={isSavingRenewalOptions}
           />
         );
       case "Configuration":
         return (
           <Step1Configuration
+            clientId={clientId}
             subscriptionMode={subscriptionMode}
             selectedPlan={selectedPlan}
             setSelectedPlan={setSelectedPlan}
-            selectedVariant={selectedVariant}
-            setSelectedVariant={setSelectedVariant}
-            selectedCalories={selectedCalories}
-            setSelectedCalories={setSelectedCalories}
-            proteinTarget={proteinTarget}
-            setProteinTarget={setProteinTarget}
-            selectedMeals={selectedMeals}
-            setSelectedMeals={setSelectedMeals}
+            mealTypeSelections={mealTypeSelections}
+            setMealTypeSelections={setMealTypeSelections}
             enableAddons={enableAddons}
             setEnableAddons={setEnableAddons}
             addonTab={addonTab}
@@ -116,50 +421,63 @@ const CreateSubscriptionPage = () => {
             cart={cart}
             setCart={setCart}
             onBack={activeStep > 0 ? handleBack : undefined}
-            onNext={handleNext}
+            onNext={handleConfigurationNext}
+            isSaving={isSavingConfiguration}
           />
         );
       case "Schedule":
         return (
           <Step2Schedule
+            clientId={clientId}
             subscriptionMode={subscriptionMode}
+            renewalStrategy={renewalStrategy}
+            scheduledStartDate={scheduledStartDate}
             duration={duration}
             setDuration={setDuration}
-            skipSaturdays={skipSaturdays}
-            setSkipSaturdays={setSkipSaturdays}
-            skipSundays={skipSundays}
-            setSkipSundays={setSkipSundays}
+            selectedWeekdays={selectedWeekdays}
+            setSelectedWeekdays={setSelectedWeekdays}
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
+            selectedDeliveryDates={selectedDeliveryDates}
+            setSelectedDeliveryDates={setSelectedDeliveryDates}
+            preferredDeliveryTime={preferredDeliveryTime}
+            setPreferredDeliveryTime={setPreferredDeliveryTime}
+            clientLocationId={clientLocationId}
+            setClientLocationId={setClientLocationId}
             promoCode={promoCode}
             setPromoCode={setPromoCode}
             manualDiscount={manualDiscount}
             setManualDiscount={setManualDiscount}
+            hasActiveSubscription={wizardDraftResponse?.data?.hasActiveSubscription}
+            activeSubscriptionEndDate={wizardDraftResponse?.data?.activeSubscriptionEndDate}
+            hasUpcomingSubscription={wizardDraftResponse?.data?.hasUpcomingSubscription}
+            upcomingSubscriptionEndDate={wizardDraftResponse?.data?.upcomingSubscriptionEndDate}
+            upcomingMealPlanName={wizardDraftResponse?.data?.upcomingMealPlanName}
+            upcomingSelectedDeliveryDates={
+              wizardDraftResponse?.data?.upcomingSelectedDeliveryDates
+            }
             onBack={handleBack}
-            onNext={handleNext}
+            onNext={handleScheduleNext}
+            isSaving={isSavingSchedule}
           />
         );
       case "Billing & Review":
         return (
           <Step5Billing
-            paymentMethod={paymentMethod}
-            setPaymentMethod={setPaymentMethod}
+            preview={preview}
+            isPreviewLoading={isPreviewLoading}
             customerEmail={customerEmail}
             setCustomerEmail={setCustomerEmail}
             paymentMessage={paymentMessage}
             setPaymentMessage={setPaymentMessage}
-            planName={planTitles[selectedPlan] || "Custom Plan"}
-            duration={duration}
-            mealsPerDay={selectedMeals.length}
-            deliveryAddress={"Home - 123 Palm Jumeirah"}
-            planBasePrice={planBasePrice}
-            addonsCost={addonsCost}
-            subtotal={subtotal}
-            discountAmount={discountAmount}
-            vat={vat}
-            total={total}
+            paymentProvider={paymentProvider}
+            setPaymentProvider={setPaymentProvider}
             cart={cart}
             onBack={handleBack}
+            onSaveDraft={handleSaveDraft}
+            onSubmit={handleBillingSubmit}
+            isSavingDraft={isSavingDraft}
+            isSaving={isSavingBilling || isFinalizing}
           />
         );
       default:
@@ -169,6 +487,12 @@ const CreateSubscriptionPage = () => {
 
   return (
     <Box sx={{ width: "100%" }}>
+      {draftId && isWizardDraftLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
       <Box sx={{ mb: 4 }}>
         <AppBreadcrumb
           paths={[
@@ -191,7 +515,7 @@ const CreateSubscriptionPage = () => {
       </Box>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={allowRenewMode ? 6 : 12}>
           <Box
             onClick={() => handleModeSwitch("new")}
             sx={{
@@ -215,30 +539,32 @@ const CreateSubscriptionPage = () => {
             </Box>
           </Box>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Box
-            onClick={() => handleModeSwitch("renew")}
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              border: "1px solid",
-              borderColor: subscriptionMode === "renew" ? "primary.main" : "#E2E8F0",
-              bgcolor: subscriptionMode === "renew" ? "#fff" : "#fff",
-              boxShadow: subscriptionMode === "renew" ? "0 4px 14px rgba(16,185,129,0.05)" : "none",
-            }}
-          >
-            <Box sx={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid", borderColor: subscriptionMode === "renew" ? "primary.main" : "#CBD5E1", mr: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {subscriptionMode === "renew" && <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: "primary.main" }} />}
+        {allowRenewMode ? (
+          <Grid item xs={12} md={6}>
+            <Box
+              onClick={() => handleModeSwitch("renew")}
+              sx={{
+                p: 2.5,
+                borderRadius: 3,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                border: "1px solid",
+                borderColor: subscriptionMode === "renew" ? "primary.main" : "#E2E8F0",
+                bgcolor: subscriptionMode === "renew" ? "#fff" : "#fff",
+                boxShadow: subscriptionMode === "renew" ? "0 4px 14px rgba(16,185,129,0.05)" : "none",
+              }}
+            >
+              <Box sx={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid", borderColor: subscriptionMode === "renew" ? "primary.main" : "#CBD5E1", mr: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {subscriptionMode === "renew" && <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: "primary.main" }} />}
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>Renew Subscription</Typography>
+                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Extend existing subscription</Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>Renew Subscription</Typography>
-              <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Extend existing subscription</Typography>
-            </Box>
-          </Box>
-        </Grid>
+          </Grid>
+        ) : null}
       </Grid>
 
       <Box sx={{ mb: 4, bgcolor: "#fff", borderRadius: 3, border: "1px solid #E2E8F0", p: 1 }}>
@@ -289,6 +615,8 @@ const CreateSubscriptionPage = () => {
       <Box>
         {renderActiveStepComponent()}
       </Box>
+        </>
+      )}
     </Box>
   );
 };

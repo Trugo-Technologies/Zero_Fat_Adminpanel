@@ -151,7 +151,7 @@ const ProfileHero = ({ client, onEdit, onSendNotification }: Props) => {
                 <EditOutlinedIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title={<IntlMessages id="clientAccountAccess.sendNotification" />}>
+            <Tooltip title={<IntlMessages id="clientAccountAccess.viewNotifications" />}>
               <IconButton
                 onClick={onSendNotification}
                 sx={{

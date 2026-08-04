@@ -28,6 +28,8 @@ export const mockClient: ClientAccountData = {
   totalDeliveredMeals: 186,
   upcomingDeliveries: 28,
   accessStatus: "Active",
+  rawAccessStatus: "Active",
+  blockOption: 0,
   lastLoginDate: "2026-06-14T09:32:00",
   heightInCM: 168,
   weightInKG: 72,
@@ -94,6 +96,7 @@ export const mockActivityLogs: ActivityLogRow[] = [
   {
     id: "1",
     action: "Delivery Moved",
+    actionType: 0,
     performedBy: "Admin — John Smith",
     previousValue: "2025-06-10",
     newValue: "2025-06-12",
@@ -103,6 +106,7 @@ export const mockActivityLogs: ActivityLogRow[] = [
   {
     id: "2",
     action: "Meal Plan Changed",
+    actionType: 1,
     performedBy: "Admin — Jane Doe",
     previousValue: "1600 kcal Standard",
     newValue: "1800 kcal Lean Muscle",
@@ -112,6 +116,7 @@ export const mockActivityLogs: ActivityLogRow[] = [
   {
     id: "3",
     action: "Additional Item Added",
+    actionType: 2,
     performedBy: "Admin — John Smith",
     previousValue: "—",
     newValue: "Protein Shake x2",
@@ -121,6 +126,7 @@ export const mockActivityLogs: ActivityLogRow[] = [
   {
     id: "4",
     action: "Delivery Cancelled",
+    actionType: 3,
     performedBy: "System",
     previousValue: "Pending — 2025-06-01",
     newValue: "Cancelled",
@@ -130,6 +136,7 @@ export const mockActivityLogs: ActivityLogRow[] = [
   {
     id: "5",
     action: "Client Unblocked",
+    actionType: 9,
     performedBy: "Admin — Jane Doe",
     previousValue: "Blocked",
     newValue: "Active",

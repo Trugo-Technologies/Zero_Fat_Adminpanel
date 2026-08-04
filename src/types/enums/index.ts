@@ -130,6 +130,7 @@ export const subscriptionStatus = {
   Cancelled: "Cancelled",
   Expired: "Expired",
   Pending: "Pending",
+  NoSubscription: "NoSubscription",
 };
 
 export const gender = {

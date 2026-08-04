@@ -221,8 +221,8 @@ function DailySelectionsPage({ clientName }: { clientName?: string }) {
   };
 
   const handleExport = () => {
-    const getNestedValue = (obj: Record<string, unknown>, path: string) =>
-      path.split(".").reduce<any>((acc, key) => acc?.[key], obj);
+    const getNestedValue = (obj: object, path: string) =>
+      path.split(".").reduce<any>((acc, key) => (acc as any)?.[key], obj);
 
     const exportedRows = data?.data?.map((row) => {
       const newRow: Record<string, unknown> = {};
@@ -270,7 +270,6 @@ function DailySelectionsPage({ clientName }: { clientName?: string }) {
           {messages["sidebar.clients"] as string}
         </Typography>
         <AppBaseAutoComplete
-          label="sidebar.clients"
           isLoading={isFetchingClients}
           options={clientsList?.data}
           hasNextPage={clientsList?.hasNextPage}
@@ -377,7 +376,7 @@ function DailySelectionsPage({ clientName }: { clientName?: string }) {
                   ) => {
                     setSearchValue(event.target.value);
                   }}
-                  successUrl={`${endPoints.dailySelections().pathname}/search`}
+                  successUrl={`${endPoints.dailySelections().pathname}/filter`}
                   selectionModel={selectionModel as string[]}
                   setSelectionModel={setSelectionModel}
                   refetch={refetch}

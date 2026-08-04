@@ -21,6 +21,10 @@ const SubscriptionBadge: React.FC<ISubscriptionBadgeProps> = (props) => {
         return {
           color: "#c91c1cbd",
         };
+      case subscriptionStatus.NoSubscription:
+        return {
+          color: "#64748B",
+        };
       default:
         return {
           color: "blue",

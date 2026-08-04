@@ -10,7 +10,7 @@ interface IAppBaseAutoCompleteProps {
   options: any[] | undefined;
   onChangeAutoComplete: (event: any, value: any) => void;
   isLoading: boolean;
-  label: string;
+  label?: string;
   onChangeTextField?: (value: any) => void;
   error?: any;
   touched?: any;
@@ -172,7 +172,7 @@ const AppBaseAutoComplete: React.FC<IAppBaseAutoCompleteProps> = React.memo(
           <TextField
             autoFocus={autoFocus}
             {...params}
-            label={<IntlMessages id={label} />}
+            label={label ? <IntlMessages id={label} /> : undefined}
             onChange={onChangeTextField}
             error={touched && Boolean(error)}
             helperText={touched && error}

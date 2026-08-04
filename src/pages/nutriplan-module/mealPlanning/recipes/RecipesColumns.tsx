@@ -168,15 +168,20 @@ export const RecipesColumns = (
       align: "center",
       flex: 0.2,
       headerClassName: "super-app-theme--header",
-      renderCell: (params) => (
-        <AppDataGridCell
-          value={
-            messages[
-              `recipes.dietaryCategories.${params?.row?.dietaryCategories}`
-            ] as string
-          }
-        />
-      ),
+      renderCell: (params) => {
+        const categories = Array.isArray(params?.row?.dietaryCategories)
+          ? params.row.dietaryCategories
+          : [];
+        const label = categories
+          .map(
+            (category: string) =>
+              (messages[`recipes.dietaryCategories.${category}`] as string) ||
+              category
+          )
+          .join(", ");
+
+        return <AppDataGridCell value={label} />;
+      },
     },
     {
       field: "createdByName",

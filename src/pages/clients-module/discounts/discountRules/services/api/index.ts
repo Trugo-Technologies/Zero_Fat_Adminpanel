@@ -9,18 +9,20 @@ import {
   IDiscountRuleDetailsDto,
   IDiscountRulesListDto,
 } from "src/types/modules/clientsManagement/discounts/discountRules";
+import { buildDiscountRulesFilterRequest } from "../../discountRuleFilterHelpers";
 
 const TAG_NAME = "discountRules";
 const discountRulesService = api
   .enhanceEndpoints({ addTagTypes: [TAG_NAME] })
   .injectEndpoints({
+    overrideExisting: true,
     endpoints: ({ mutation, query }) => ({
       getAllDiscountRules: query<IDiscountRulesListDto, ArgsType>({
         providesTags: [TAG_NAME],
-        query: (data) => ({
-          url: endPoints.discountRules().pathname + "/search",
-          data,
-          method: "POST",
+        query: (props) => ({
+          url: `${endPoints.discountRules().pathname}/filter`,
+          method: "GET",
+          params: buildDiscountRulesFilterRequest(props),
         }),
       }),
       createDiscountRule: mutation({

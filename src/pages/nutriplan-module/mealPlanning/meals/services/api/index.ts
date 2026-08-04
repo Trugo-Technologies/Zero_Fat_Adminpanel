@@ -11,6 +11,7 @@ import {
   IMealsDetailsDto,
   IMealsListDto,
 } from "src/types/modules/nutriplan/mealPlanning/meals";
+import { buildMealsFilterRequest } from "../../mealFilterHelpers";
 
 const apiService = api
   .enhanceEndpoints({ addTagTypes: ["meals"] })
@@ -18,13 +19,11 @@ const apiService = api
     endpoints: ({ query, mutation }) => ({
       getAllMeals: query<IMealsListDto, ArgsType>({
         providesTags: ["meals"],
-        query: (props) => {
-          return {
-            url: `${endPoints.meals().pathname}/search`,
-            method: "POST",
-            data: props,
-          };
-        },
+        query: (props) => ({
+          url: `${endPoints.meals().pathname}/filter`,
+          method: "GET",
+          params: buildMealsFilterRequest(props),
+        }),
       }),
       addMeal: mutation<void, any>({
         query: (data) => ({

@@ -10,6 +10,7 @@ import {
   IWorkoutDetailsDto,
   IWorkoutsListDto,
 } from "src/types/modules/workout/workouts";
+import { buildWorkoutsSearchRequest } from "../../workoutFilterHelpers";
 
 const apiService = api
   .enhanceEndpoints({ addTagTypes: ["workouts"] })
@@ -21,7 +22,7 @@ const apiService = api
           return {
             url: `${endPoints.workouts().pathname}/search`,
             method: "POST",
-            data: props,
+            data: buildWorkoutsSearchRequest(props),
           };
         },
         keepUnusedDataFor: 0,

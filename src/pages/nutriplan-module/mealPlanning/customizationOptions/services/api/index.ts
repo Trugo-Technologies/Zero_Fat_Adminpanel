@@ -9,6 +9,7 @@ import {
   ICustomizationOptionsListDto,
   ICustomizationOptionDetailsDto,
 } from "src/types/modules/nutriplan/mealPlanning/customizationOptions";
+import { buildCustomizationOptionsFilterRequest } from "../../customizationOptionFilterHelpers";
 
 const TAG_NAME = "CustomizationOptions";
 const apiService = api
@@ -18,13 +19,11 @@ const apiService = api
       getAllCustomizationOptions: query<ICustomizationOptionsListDto, ArgsType>(
         {
           providesTags: [TAG_NAME],
-          query: (props) => {
-            return {
-              url: `${endPoints.customizationOptions().pathname}/search`,
-              method: "POST",
-              data: props,
-            };
-          },
+          query: (props) => ({
+            url: `${endPoints.customizationOptions().pathname}/filter`,
+            method: "GET",
+            params: buildCustomizationOptionsFilterRequest(props),
+          }),
         }
       ),
       addCustomizationOption: mutation<void, any>({

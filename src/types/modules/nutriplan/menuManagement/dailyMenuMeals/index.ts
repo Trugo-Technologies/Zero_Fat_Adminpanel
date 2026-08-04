@@ -67,3 +67,43 @@ export interface IDailyMenuMeals extends IBaseAdditionalResponseDetailsDto {
   water: number;
   imageUrl: string;
 }
+
+export interface IMealsByPlanArgs {
+  mealTypeId: string;
+  date: string;
+  clientId: string;
+  mealPlanId?: string;
+  search?: string;
+}
+
+export interface IAdminMealsByPlanMeal {
+  id: string;
+  mealPlanId: string;
+  meal: {
+    id: string;
+    nameEn: string;
+    nameAr: string;
+    imageUrl?: string;
+    priceForCustomer?: number;
+  };
+  defaultPrice: number;
+}
+
+export interface IAdminMealsByPlan {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  meals: IAdminMealsByPlanMeal[];
+  customMeals: IAdminMealsByPlanMeal[];
+}
+
+export interface IMealsByPlanDetails
+  extends IBaseResponseDetailsDto<IAdminMealsByPlan[]> {}
+
+export interface IMealsByPlanOption {
+  /** `id` from mealsbyPlan API — sent as `dailyMenuMealId` in replace-meals payloads. */
+  dailyMenuMealId: string;
+  mealId: string;
+  nameEn: string;
+  nameAr: string;
+}

@@ -9,8 +9,8 @@ import WarningIcon from "@mui/icons-material/ErrorOutline";
 import CheckIcon from "@mui/icons-material/CheckOutlined";
 import AppMessageView from "src/@crema/components/AppMessageView";
 import { useInfoViewActionsContext } from "src/@crema/context/AppContextProvider/InfoViewContextProvider";
-let showErrorToasts: Function;
-let showSuccessToasts: Function;
+let showErrorToasts: (message: string) => void = () => {};
+let showSuccessToasts: (message: string) => void = () => {};
 
 const success = (message: string) => (
   <Alert
@@ -46,6 +46,7 @@ const Toasts = () => {
   const infoViewActionsContext = useInfoViewActionsContext();
 
   const dispatch = useAppDispatch();
+  const [toastKey, setToastKey] = useState(0);
   const [open, setOpen] = useState<{
     variant: "error" | "success" | null;
     message: string | null;
@@ -58,17 +59,24 @@ const Toasts = () => {
     setOpen({ variant: null, message: null });
   };
   showErrorToasts = (message: string) => {
+    const trimmed = message?.trim();
+    if (!trimmed) return;
     // handleErrorTokenFromErrorCode(`${code}`) ? dispatch(resetAuthData()) : null;
-    setOpen({ variant: "error", message: message });
+    setToastKey((key) => key + 1);
+    setOpen({ variant: "error", message: trimmed });
   };
 
   showSuccessToasts = (message: string) => {
-    setOpen({ variant: "success", message: message });
+    const trimmed = message?.trim();
+    if (!trimmed) return;
+    setToastKey((key) => key + 1);
+    setOpen({ variant: "success", message: trimmed });
   };
 
   return (
     <>
       <AppMessageView
+        key={toastKey}
         variant={open.variant || "error"}
         message={open?.message ?? ""}
         clearInfoView={handleClose}

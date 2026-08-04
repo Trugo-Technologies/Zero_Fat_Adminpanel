@@ -1,5 +1,6 @@
 /** @format */
 
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import { GridColDef } from "@mui/x-data-grid";
 import moment from "moment";
@@ -7,6 +8,7 @@ import { useIntl } from "react-intl";
 import DietitianGoalBadge from "src/Components/baseComponents/badge/DietitianGoalBadge";
 import GenderBadge from "src/Components/baseComponents/badge/GenderBadge";
 import StatusBadge from "src/Components/baseComponents/badge/StatusBadge";
+import SubscriptionBadge from "src/Components/baseComponents/badge/SubscriptionBadge";
 import AddDataGridActivation from "src/Components/baseComponents/dataGrid/AddDataGridActivation";
 import AppDataGridCell from "src/Components/baseComponents/dataGrid/AppDataGridCell";
 import AppDataGridImage from "src/Components/baseComponents/dataGrid/AppDataGridImage";
@@ -317,6 +319,22 @@ export const ClientsColumns = (
       ),
     },
     {
+      field: "subscriptionStatus",
+      headerName: messages["clients.subscriptionStatus"] as string,
+      headerAlign: "center",
+      align: "center",
+      flex: 0.2,
+      headerClassName: "super-app-theme--header",
+      minWidth: 140,
+      renderCell: (params) => (
+        <AppDataGridCell
+          value={
+            <SubscriptionBadge label={params?.row?.subscriptionStatus!} />
+          }
+        />
+      ),
+    },
+    {
       field: "isActive",
       headerName: messages["common.status"] as string,
       headerAlign: "center",
@@ -335,7 +353,7 @@ export const ClientsColumns = (
       filterable: false,
       headerAlign: "center",
       flex: 0.1,
-      minWidth: 120,
+      minWidth: 160,
       headerClassName: "super-app-theme--header",
       hideable: false,
 
@@ -352,6 +370,15 @@ export const ClientsColumns = (
               toPathLink={`/clientsManagement/clients/profile/${params?.row?.id}`}
               childComp={
                 <RemoveRedEyeIcon fontSize='small' sx={{ color: "#9b9b9b" }} />
+              }
+            />
+
+            <AppIconButton
+              label='table.actions.clientAccess'
+              withLink
+              toPathLink={`/clientsManagement/clientAccountAccess?clientId=${params?.row?.id}`}
+              childComp={
+                <ManageAccountsIcon fontSize='small' sx={{ color: "#9b9b9b" }} />
               }
             />
 

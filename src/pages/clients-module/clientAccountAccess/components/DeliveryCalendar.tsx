@@ -9,7 +9,7 @@ import { alpha, Box, IconButton, Stack, Tooltip, Typography } from "@mui/materia
 import dayjs, { Dayjs } from "dayjs";
 import { useMemo } from "react";
 import { DeliveryDay } from "../types";
-import { DeliveryStatusChip } from "./statusChip";
+import { DeliveryStatusChip, DELIVERY_CALENDAR_LEGEND } from "./statusChip";
 
 type Props = {
   month: Dayjs;
@@ -82,22 +82,24 @@ const DeliveryCalendar = ({ month, deliveries, selectedDate, onMonthChange, onDa
           const isSelected = selectedDate === dateKey;
           const isToday = cell.date.isSame(dayjs(), "day");
           const hasDelivery = Boolean(cell.delivery);
+          const isInteractive =
+            hasDelivery && cell.delivery!.status !== "Unavailable";
 
-          let mealsCount = 0;
-          if (cell.delivery) {
-            if (cell.delivery.breakfast && cell.delivery.breakfast !== "-") mealsCount++;
+          let mealsCount = cell.delivery?.mealCount ?? 0;
+          if (!mealsCount && cell.delivery) {
+            if (cell.delivery.breakfast && cell.delivery.breakfast !== "-")
+              mealsCount++;
             if (cell.delivery.lunch && cell.delivery.lunch !== "-") mealsCount++;
-            if (cell.delivery.dinner && cell.delivery.dinner !== "-") mealsCount++;
-            if (cell.delivery.postWorkout && cell.delivery.postWorkout !== "-") mealsCount++;
+            if (cell.delivery.dinner && cell.delivery.dinner !== "-")
+              mealsCount++;
+            if (cell.delivery.postWorkout && cell.delivery.postWorkout !== "-")
+              mealsCount++;
           }
-
-          // Force mock data to show 4 meals for the visual match if it has delivery
-          if (hasDelivery && mealsCount === 0) mealsCount = 4;
 
           return (
             <Box
               key={dateKey}
-              onClick={() => cell.delivery && onDayClick(cell.delivery)}
+              onClick={() => isInteractive && onDayClick(cell.delivery!)}
               sx={{
                 minHeight: 120,
                 p: 1.5,
@@ -109,12 +111,12 @@ const DeliveryCalendar = ({ month, deliveries, selectedDate, onMonthChange, onDa
                     ? "#1A2B48"
                     : "#E2E8F0",
                 bgcolor: isToday ? alpha("#10B981", 0.04) : "#FFFFFF",
-                cursor: hasDelivery ? "pointer" : "default",
+                cursor: isInteractive ? "pointer" : "default",
                 transition: "all 0.2s ease",
                 position: "relative",
                 display: "flex",
                 flexDirection: "column",
-                "&:hover": hasDelivery
+                "&:hover": isInteractive
                   ? {
                       borderColor: "#10B981",
                       boxShadow: `0 8px 24px ${alpha("#10B981", 0.08)}`,
@@ -136,7 +138,10 @@ const DeliveryCalendar = ({ month, deliveries, selectedDate, onMonthChange, onDa
 
               {cell.delivery && (
                 <Box sx={{ display: "flex", justifyContent: "center", my: "auto" }}>
-                  <DeliveryStatusChip status={cell.delivery.status} />
+                  <DeliveryStatusChip
+                    status={cell.delivery.status}
+                    label={cell.delivery.scheduleLabel}
+                  />
                 </Box>
               )}
 
@@ -169,8 +174,8 @@ const DeliveryCalendar = ({ month, deliveries, selectedDate, onMonthChange, onDa
         sx={{ mt: 4, px: 1 }}
       >
         <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-          {(["Delivered", "Pending", "Skipped", "Moved"] as const).map((s) => (
-            <DeliveryStatusChip key={s} status={s} />
+          {DELIVERY_CALENDAR_LEGEND.map(({ status, label }) => (
+            <DeliveryStatusChip key={status} status={status} label={label} />
           ))}
         </Stack>
         <Typography sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500 }}>

@@ -17,6 +17,7 @@ import {
   Box,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import IconButton from "@mui/material/IconButton";
 import { GridRowSelectionModel } from "@mui/x-data-grid";
 import { debounce } from "lodash";
@@ -28,6 +29,7 @@ import { useNavigate } from "react-router-dom";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
 import AppConfirmModal from "src/Components/baseComponents/modals/AppConfirmModal";
 import AppIconButton from "src/Components/baseComponents/other/AppIconButton";
+import { getFilterToolbarButtonSx } from "./filterToolbarButtonSx";
 interface IAdvanceFilterProps {
   showAdvanceFiltersButton?: boolean;
   advanceFiltersInputs?: React.ReactNode[];
@@ -37,6 +39,10 @@ interface IAdvanceFilterProps {
   filterAll?: any;
 
   setIsOpenAdvanceFilters?: any;
+  isOpenExportFilters?: boolean;
+  exportFiltersInputs?: React.ReactNode[];
+  showExportFiltersButton?: boolean;
+  onToggleExportFilters?: () => void;
 }
 interface MenuItem {
   setState: React.Dispatch<React.SetStateAction<boolean>>;
@@ -147,6 +153,10 @@ const AppFilters: React.FC<IAppFiltersProps> = (props) => {
     advanceFiltersInputs = [],
     isOpenAdvanceFilters = false,
     setIsOpenAdvanceFilters,
+    isOpenExportFilters = false,
+    exportFiltersInputs = [],
+    showExportFiltersButton = false,
+    onToggleExportFilters,
   } = props;
 
   const { messages } = useIntl();
@@ -361,11 +371,27 @@ const AppFilters: React.FC<IAppFiltersProps> = (props) => {
                 <Zoom in style={{ transitionDelay: "300ms" }}>
                   <Button
                     variant="outlined"
-                    onClick={() => setIsOpenAdvanceFilters && setIsOpenAdvanceFilters(!isOpenAdvanceFilters)}
+                    onClick={() => {
+                      const next = !isOpenAdvanceFilters;
+                      setIsOpenAdvanceFilters?.(next);
+                    }}
                     startIcon={<FilterListIcon />}
-                    sx={{ height: 40, px: 3, mr: 1, borderRadius: 8, borderColor: "#E2E8F0", color: "#0F172A", textTransform: "none", fontWeight: 700, "&:hover": { bgcolor: "#F8FAFC" } }}
+                    sx={getFilterToolbarButtonSx(isOpenAdvanceFilters)}
                   >
                     <IntlMessages id="common.filter" defaultMessage="Filters" />
+                  </Button>
+                </Zoom>
+              )}
+
+              {showExportFiltersButton && (
+                <Zoom in style={{ transitionDelay: "300ms" }}>
+                  <Button
+                    variant="outlined"
+                    onClick={onToggleExportFilters}
+                    startIcon={<FileDownloadOutlinedIcon />}
+                    sx={getFilterToolbarButtonSx(isOpenExportFilters)}
+                  >
+                    <IntlMessages id="common.exportAll" defaultMessage="Export" />
                   </Button>
                 </Zoom>
               )}
@@ -458,9 +484,44 @@ const AppFilters: React.FC<IAppFiltersProps> = (props) => {
         {/* Advance Filters Collapse */}
         {showAdvanceFiltersButton && advanceFiltersInputs && advanceFiltersInputs.length > 0 && (
           <Grid item xs={12}>
-            <Collapse in={isOpenAdvanceFilters}>
-              <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3, p: 3, mt: 1, bgcolor: "#fff", display: "flex", alignItems: "flex-end", flexWrap: "wrap", gap: 3 }}>
+            <Collapse in={Boolean(isOpenAdvanceFilters)} timeout="auto" unmountOnExit>
+              <Box
+                sx={{
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 3,
+                  p: 3,
+                  mt: 1,
+                  bgcolor: "#fff",
+                  display: "flex",
+                  alignItems: "flex-end",
+                  flexWrap: "wrap",
+                  gap: 3,
+                }}
+              >
                 {advanceFiltersInputs.map((input, index) => (
+                  <Box key={index}>{input}</Box>
+                ))}
+              </Box>
+            </Collapse>
+          </Grid>
+        )}
+        {exportFiltersInputs && exportFiltersInputs.length > 0 && (
+          <Grid item xs={12}>
+            <Collapse in={Boolean(isOpenExportFilters)} timeout="auto" unmountOnExit>
+              <Box
+                sx={{
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 3,
+                  p: 3,
+                  mt: 1,
+                  bgcolor: "#fff",
+                  display: "flex",
+                  alignItems: "flex-end",
+                  flexWrap: "wrap",
+                  gap: 3,
+                }}
+              >
+                {exportFiltersInputs.map((input, index) => (
                   <Box key={index}>{input}</Box>
                 ))}
               </Box>

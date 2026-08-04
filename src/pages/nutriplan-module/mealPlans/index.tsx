@@ -1,15 +1,7 @@
 /** @format */
 
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Grid,
-  MenuItem,
-  Select,
-  Typography,
-} from "@mui/material";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import { Button, Card, CardContent, Grid } from "@mui/material";
 import { useCallback, useState } from "react";
 import useIntl from "react-intl/lib/src/components/useIntl";
 import AppBreadcrumb from "src/Components/baseComponents/breadcrumb/AppBreadcrumb";
@@ -18,43 +10,25 @@ import AppFilters from "src/Components/baseComponents/filters/AppFilters";
 import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
-import { mealPlansDefaultDietitianGoal } from "src/types/enums";
 import { IMealPlansListDto } from "src/types/modules/nutriplan/mealPlans";
-import { useGetAllMealPlansQuery } from "./services/api";
+import {
+  buildMealPlanExportFilterInputs,
+  buildMealPlanListFilterInputs,
+} from "./buildMealPlanFilterInputs";
+import {
+  buildMealPlanListFilterQueryParams,
+  createDefaultMealPlanExportFilters,
+  createDefaultMealPlanListFilters,
+  DatePeriod,
+  MealPlanExportFilters,
+  MealPlanListFilters,
+} from "./mealPlanFilterHelpers";
+import {
+  useExportMealPlansMutation,
+  useGetActiveMealPlansQuery,
+  useGetAllMealPlansQuery,
+} from "./services/api";
 import useMealPlans from "./useMealPlans";
-
-const ALL_DIETITIAN_GOALS = "All Dietitian Goals";
-
-const DIETITIAN_GOAL_OPTIONS = [
-  {
-    value: mealPlansDefaultDietitianGoal.BuildMuscles,
-    labelKey: "defaultDietitianGoal.type.BuildMuscles",
-  },
-  {
-    value: mealPlansDefaultDietitianGoal.GainWeight,
-    labelKey: "defaultDietitianGoal.type.GainWeight",
-  },
-  {
-    value: mealPlansDefaultDietitianGoal.GeneralHealth,
-    labelKey: "defaultDietitianGoal.type.GeneralHealth",
-  },
-  {
-    value: mealPlansDefaultDietitianGoal.LoseWeight,
-    labelKey: "defaultDietitianGoal.type.LoseWeight",
-  },
-  {
-    value: mealPlansDefaultDietitianGoal.LoseFat,
-    labelKey: "defaultDietitianGoal.type.LoseFat",
-  },
-] as const;
-
-const selectSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 180,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
 
 const MealPlansPages = () => {
   const { messages } = useIntl();
@@ -78,75 +52,130 @@ const MealPlansPages = () => {
     setParameter,
   } = usePaginateData<IMealPlansListDto>(useGetAllMealPlansQuery);
 
-  const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [appliedDietitianGoal, setAppliedDietitianGoal] =
-    useState(ALL_DIETITIAN_GOALS);
+  const { data: activeMealPlansData } = useGetActiveMealPlansQuery();
+  const [exportMealPlans, { isLoading: isExporting }] =
+    useExportMealPlansMutation();
 
-  const syncDietitianGoalToQuery = useCallback(
-    (value: string) => {
+  const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
+  const [isOpenExportFilters, setIsOpenExportFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<MealPlanListFilters>(
+    createDefaultMealPlanListFilters
+  );
+  const [exportFilters, setExportFilters] = useState<MealPlanExportFilters>(
+    createDefaultMealPlanExportFilters
+  );
+
+  const mealPlanOptions = activeMealPlansData?.data ?? [];
+
+  const syncFiltersToQuery = useCallback(
+    (filters: MealPlanListFilters) => {
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        defaultDietitianGoal:
-          value === ALL_DIETITIAN_GOALS ? undefined : value,
+        ...buildMealPlanListFilterQueryParams(filters),
       }));
     },
     [setParameter]
   );
 
-  const handleDietitianGoalChange = (value: string) => {
-    setAppliedDietitianGoal(value);
-    syncDietitianGoalToQuery(value);
+  const handleStatusChange = (value: string) => {
+    const next = { ...appliedFilters, status: value };
+    setAppliedFilters(next);
+    syncFiltersToQuery(next);
   };
 
-  const handleClear = () => {
-    setAppliedDietitianGoal(ALL_DIETITIAN_GOALS);
+  const handleExportDatePeriodChange = (value: DatePeriod) => {
+    setExportFilters((current) => ({
+      ...current,
+      datePeriod: value,
+      startDate: value === "custom" ? current.startDate : "",
+      endDate: value === "custom" ? current.endDate : "",
+    }));
+  };
+
+  const handleExportStartDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, startDate: value }));
+  };
+
+  const handleExportEndDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, endDate: value }));
+  };
+
+  const handleExportMealPlanChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, mealPlanId: value }));
+  };
+
+  const handleExportDietitianGoalChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, defaultDietitianGoal: value }));
+  };
+
+  const handleClearListFilters = () => {
+    const cleared = createDefaultMealPlanListFilters();
+    setAppliedFilters(cleared);
     setParameter((prev) => {
-      const { defaultDietitianGoal: _, ...rest } = prev;
+      const { isActive: _, ...rest } = prev;
       return { ...rest, pageNumber: 1 };
     });
   };
 
-  const advanceFiltersInputs = [
-    <Box key="defaultDietitianGoal">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["mealPlans.defaultDietitianGoal"] as string}
-      </Typography>
-      <Select
-        size="small"
-        value={appliedDietitianGoal}
-        onChange={(e) => handleDietitianGoalChange(e.target.value)}
-        sx={selectSx}
-      >
-        <MenuItem value={ALL_DIETITIAN_GOALS} sx={{ fontSize: 13 }}>
-          {messages["common.all"] as string}
-        </MenuItem>
-        {DIETITIAN_GOAL_OPTIONS.map(({ value, labelKey }) => (
-          <MenuItem key={value} value={value} sx={{ fontSize: 13 }}>
-            {messages[labelKey] as string}
-          </MenuItem>
-        ))}
-      </Select>
-    </Box>,
-    <Box key="clear" sx={{ ml: "auto" }}>
+  const handleClearExportFilters = () => {
+    setExportFilters(createDefaultMealPlanExportFilters());
+  };
+
+  const handleDownloadExport = async () => {
+    try {
+      await exportMealPlans(exportFilters).unwrap();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleToggleExportFilters = () => {
+    const next = !isOpenExportFilters;
+    setIsOpenExportFilters(next);
+    if (next) {
+      setIsOpenAdvanceFilters(false);
+    }
+  };
+
+  const advanceFiltersInputs = buildMealPlanListFilterInputs({
+    filters: appliedFilters,
+    messages,
+    onStatusChange: handleStatusChange,
+    onClear: handleClearListFilters,
+  });
+
+  const exportFiltersInputs = buildMealPlanExportFilterInputs({
+    filters: exportFilters,
+    messages,
+    mealPlans: mealPlanOptions,
+    onDatePeriodChange: handleExportDatePeriodChange,
+    onStartDateChange: handleExportStartDateChange,
+    onEndDateChange: handleExportEndDateChange,
+    onMealPlanChange: handleExportMealPlanChange,
+    onDietitianGoalChange: handleExportDietitianGoalChange,
+    onClear: handleClearExportFilters,
+    trailingActions: (
       <Button
-        onClick={handleClear}
+        variant="outlined"
+        startIcon={<FileDownloadOutlinedIcon />}
+        onClick={handleDownloadExport}
+        disabled={isExporting}
         sx={{
-          color: "text.secondary",
+          height: 36,
+          px: 3,
+          borderRadius: 2,
+          borderColor: "#E2E8F0",
+          color: "#0F172A",
           textTransform: "none",
           fontWeight: 700,
-          "&:hover": { color: "#EF4444", bgcolor: "#FEE2E2" },
-          height: 36,
-          px: 2,
-          borderRadius: 2,
+          "&:hover": { bgcolor: "#F8FAFC" },
         }}
       >
-        Clear filters
+        {isExporting ? "Downloading..." : (messages["common.download"] as string)}
       </Button>
-    </Box>,
-  ];
+    ),
+  });
 
   return (
     <>
@@ -176,8 +205,17 @@ const MealPlansPages = () => {
                   refetch={refetch}
                   showAdvanceFiltersButton
                   isOpenAdvanceFilters={isOpenAdvanceFilters}
-                  setIsOpenAdvanceFilters={setIsOpenAdvanceFilters}
+                  setIsOpenAdvanceFilters={(open: boolean) => {
+                    setIsOpenAdvanceFilters(open);
+                    if (open) {
+                      setIsOpenExportFilters(false);
+                    }
+                  }}
                   advanceFiltersInputs={advanceFiltersInputs}
+                  isOpenExportFilters={isOpenExportFilters}
+                  exportFiltersInputs={exportFiltersInputs}
+                  showExportFiltersButton
+                  onToggleExportFilters={handleToggleExportFilters}
                 />
               </Grid>
               <Grid item xs={12} mt={6}>

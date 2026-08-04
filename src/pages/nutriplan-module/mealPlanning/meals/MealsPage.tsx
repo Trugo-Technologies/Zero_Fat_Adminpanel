@@ -7,6 +7,7 @@ import {
   CardContent,
   Grid,
   MenuItem,
+  OutlinedInput,
   Select,
   Typography,
 } from "@mui/material";
@@ -19,16 +20,22 @@ import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
 import { IMealsListDto } from "src/types/modules/nutriplan/mealPlanning/meals";
+import {
+  ALL_STATUS,
+  ALL_TYPES,
+  MealAppliedFilters,
+  buildMealFilterQueryParams,
+  createDefaultMealFilters,
+  selectSx,
+} from "./mealFilterHelpers";
 import { useGetAllMealsQuery } from "./services/api";
 import useMeals from "./useMeals";
 
-const ALL_STATUS = "All Status";
-
-const selectSx = {
+const numberInputSx = {
   borderRadius: 2,
   height: 36,
   fontSize: 13,
-  minWidth: 150,
+  width: 130,
   "& fieldset": { borderColor: "#E2E8F0" },
 };
 
@@ -55,35 +62,59 @@ const MealsPage = () => {
   } = usePaginateData<IMealsListDto>(useGetAllMealsQuery);
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [appliedStatus, setAppliedStatus] = useState(ALL_STATUS);
+  const [appliedFilters, setAppliedFilters] = useState<MealAppliedFilters>(
+    createDefaultMealFilters
+  );
 
-  const syncStatusToQuery = useCallback(
-    (value: string) => {
+  const syncFiltersToQuery = useCallback(
+    (filters: MealAppliedFilters) => {
+      const filterParams = buildMealFilterQueryParams(filters);
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        isActive:
-          value === "Active"
-            ? true
-            : value === "Inactive"
-              ? false
-              : undefined,
+        isActive: filterParams.isActive,
+        isAddOn: filterParams.isAddOn,
+        priceMin: filterParams.priceMin,
+        priceMax: filterParams.priceMax,
       }));
     },
     [setParameter]
   );
 
+  const updateFilters = (
+    updater: (current: MealAppliedFilters) => MealAppliedFilters
+  ) => {
+    const next = updater(appliedFilters);
+    setAppliedFilters(next);
+    syncFiltersToQuery(next);
+  };
+
   const handleStatusChange = (value: string) => {
-    setAppliedStatus(value);
-    syncStatusToQuery(value);
+    updateFilters((current) => ({ ...current, status: value }));
+  };
+
+  const handleAddOnChange = (value: string) => {
+    updateFilters((current) => ({ ...current, addOn: value }));
+  };
+
+  const handlePriceMinChange = (value: string) => {
+    updateFilters((current) => ({ ...current, priceMin: value }));
+  };
+
+  const handlePriceMaxChange = (value: string) => {
+    updateFilters((current) => ({ ...current, priceMax: value }));
   };
 
   const handleClear = () => {
-    setAppliedStatus(ALL_STATUS);
-    setParameter((prev) => {
-      const { isActive: _, ...rest } = prev;
-      return { ...rest, pageNumber: 1 };
-    });
+    setAppliedFilters(createDefaultMealFilters());
+    setParameter((prev) => ({
+      ...prev,
+      pageNumber: 1,
+      isActive: undefined,
+      isAddOn: undefined,
+      priceMin: undefined,
+      priceMax: undefined,
+    }));
   };
 
   const advanceFiltersInputs = [
@@ -95,7 +126,7 @@ const MealsPage = () => {
       </Typography>
       <Select
         size="small"
-        value={appliedStatus}
+        value={appliedFilters.status}
         onChange={(e) => handleStatusChange(e.target.value)}
         sx={selectSx}
       >
@@ -109,6 +140,59 @@ const MealsPage = () => {
           {messages["columns.inactive"] as string}
         </MenuItem>
       </Select>
+    </Box>,
+    <Box key="isAddOn">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["meals.isAddOn"] as string}
+      </Typography>
+      <Select
+        size="small"
+        value={appliedFilters.addOn}
+        onChange={(e) => handleAddOnChange(e.target.value)}
+        sx={selectSx}
+      >
+        <MenuItem value={ALL_TYPES} sx={{ fontSize: 13 }}>
+          {messages["common.all"] as string}
+        </MenuItem>
+        <MenuItem value="AddOn" sx={{ fontSize: 13 }}>
+          {messages["common.yes"] as string}
+        </MenuItem>
+        <MenuItem value="Regular" sx={{ fontSize: 13 }}>
+          {messages["common.no"] as string}
+        </MenuItem>
+      </Select>
+    </Box>,
+    <Box key="priceMin">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["meals.filter.minPrice"] as string}
+      </Typography>
+      <OutlinedInput
+        type="number"
+        size="small"
+        value={appliedFilters.priceMin}
+        onChange={(e) => handlePriceMinChange(e.target.value)}
+        sx={numberInputSx}
+        inputProps={{ min: 0 }}
+      />
+    </Box>,
+    <Box key="priceMax">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["meals.filter.maxPrice"] as string}
+      </Typography>
+      <OutlinedInput
+        type="number"
+        size="small"
+        value={appliedFilters.priceMax}
+        onChange={(e) => handlePriceMaxChange(e.target.value)}
+        sx={numberInputSx}
+        inputProps={{ min: 0 }}
+      />
     </Box>,
     <Box key="clear" sx={{ ml: "auto" }}>
       <Button
@@ -150,7 +234,7 @@ const MealsPage = () => {
                   ) => {
                     setSearchValue(event.target.value);
                   }}
-                  successUrl={`${endPoints.meals().pathname}/search`}
+                  successUrl={`${endPoints.meals().pathname}/filter`}
                   selectionModel={selectionModel as string[]}
                   setSelectionModel={setSelectionModel}
                   refetch={refetch}

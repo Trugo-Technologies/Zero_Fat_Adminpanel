@@ -10,6 +10,7 @@ import {
   IWorkoutPlansDetailsDto,
   IWorkoutPlansListDto,
 } from "src/types/modules/workout/workoutPlans";
+import { buildPlansSearchRequest } from "../../planFilterHelpers";
 
 const workoutPlansService = api
   .enhanceEndpoints({ addTagTypes: ["plans"] })
@@ -19,7 +20,7 @@ const workoutPlansService = api
         providesTags: ["plans"],
         query: (data) => ({
           url: endPoints.planEndpoint().pathname + "/search",
-          data,
+          data: buildPlansSearchRequest(data),
           method: "POST",
         }),
       }),

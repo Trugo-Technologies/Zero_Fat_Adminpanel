@@ -1,115 +1,32 @@
 /** @format */
 
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Grid,
-  MenuItem,
-  OutlinedInput,
-  Select,
-  Typography,
-} from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import { Button, Card, CardContent, Grid } from "@mui/material";
+import { useCallback, useState } from "react";
 import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
 import AppBreadcrumb from "src/Components/baseComponents/breadcrumb/AppBreadcrumb";
 import AppDataGrid from "src/Components/baseComponents/dataGrid/AppDataGrid";
 import AppFilters from "src/Components/baseComponents/filters/AppFilters";
-import AppBaseAutoComplete from "src/Components/baseComponents/inputs/autoComplete/AppBaseAutoComplete";
 import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
-import { useGetAllMealPlansQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
 import { endPoints } from "src/shared/end-points";
+import { buildClientSubscriptionExportFilterInputs } from "./buildClientSubscriptionExportFilterInputs";
+import { buildClientSubscriptionFilterInputs } from "./buildClientSubscriptionFilterInputs";
 import {
-  paymentStatus,
-  subscriptionStatus,
-  subscriptionType,
-} from "src/types/enums";
+  ClientSubscriptionAppliedFilters,
+  ClientSubscriptionExportFilters,
+  ClientSubscriptionExportPeriod,
+  ClientSubscriptionExportType,
+  buildClientSubscriptionFilterQueryParams,
+  createDefaultClientSubscriptionExportFilters,
+  createDefaultClientSubscriptionFilters,
+} from "./clientSubscriptionFilterHelpers";
 import {
-  IMealPlans,
-  IMealPlansListDto,
-} from "src/types/modules/nutriplan/mealPlans";
-import { useGetAllClientSubscriptionsQuery } from "./services/api";
+  useExportClientSubscriptionsMutation,
+  useGetAllClientSubscriptionsQuery,
+} from "./services/api";
 import useClientSubscriptions from "./useClientSubscriptions";
-
-const ALL_SUBSCRIPTION_TYPES = "All Subscription Types";
-const ALL_SUBSCRIPTION_STATUS = "All Subscription Status";
-const ALL_PAYMENT_STATUS = "All Payment Status";
-
-const selectSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
-
-const dateInputSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
-
-const SUBSCRIPTION_TYPE_OPTIONS = [
-  {
-    value: subscriptionType.OneWeek,
-    labelKey: "subscriptionPlans.subscriptionType.OneWeek",
-  },
-  {
-    value: subscriptionType.OneMonth,
-    labelKey: "subscriptionPlans.subscriptionType.OneMonth",
-  },
-  {
-    value: subscriptionType.ThreeMonths,
-    labelKey: "subscriptionPlans.subscriptionType.ThreeMonths",
-  },
-] as const;
-
-const SUBSCRIPTION_STATUS_OPTIONS = [
-  {
-    value: subscriptionStatus.Active,
-    labelKey: "clients.subscriptionStatus.Active",
-  },
-  {
-    value: subscriptionStatus.Pending,
-    labelKey: "clients.subscriptionStatus.Pending",
-  },
-  {
-    value: subscriptionStatus.Cancelled,
-    labelKey: "clients.subscriptionStatus.Cancelled",
-  },
-  {
-    value: subscriptionStatus.Expired,
-    labelKey: "clients.subscriptionStatus.Expired",
-  },
-] as const;
-
-const PAYMENT_STATUS_OPTIONS = [
-  { value: paymentStatus.Pending, labelKey: "payments.paymentStatus.Pending" },
-  { value: paymentStatus.Paid, labelKey: "payments.paymentStatus.Paid" },
-  { value: paymentStatus.Failed, labelKey: "payments.paymentStatus.Failed" },
-  { value: paymentStatus.Refunded, labelKey: "payments.paymentStatus.Refunded" },
-  {
-    value: paymentStatus.Cancelled,
-    labelKey: "payments.paymentStatus.Cancelled",
-  },
-  {
-    value: paymentStatus.PartiallyPaid,
-    labelKey: "payments.paymentStatus.PartiallyPaid",
-  },
-] as const;
-
-type AppliedFilters = {
-  startDate: string;
-  endDate: string;
-  subscriptionType: string;
-  subscriptionStatus: string;
-  paymentStatus: string;
-};
 
 function ClientSubscriptionsPage() {
   const { messages } = useIntl();
@@ -133,251 +50,209 @@ function ClientSubscriptionsPage() {
     clientIdParams ? { clientId: clientIdParams } : {}
   );
 
-  const {
-    changePage: changeMealPlanPage,
-    data: mealPlansData,
-    isFetching: isFetchingMealPlans,
-    page: mealPlanPage,
-    setSearchValue: setMealPlanSearchValue,
-    refetch: refetchMealPlans,
-  } = usePaginateData<IMealPlansListDto>(useGetAllMealPlansQuery);
-
   const { Modals, columns, selectionModel, setSelectionModel } =
     useClientSubscriptions();
+  const [exportClientSubscriptions, { isLoading: isExporting }] =
+    useExportClientSubscriptionsMutation();
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [selectedMealPlan, setSelectedMealPlan] = useState<IMealPlans | null>(
-    null
-  );
-  const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
-    startDate: "",
-    endDate: "",
-    subscriptionType: ALL_SUBSCRIPTION_TYPES,
-    subscriptionStatus: ALL_SUBSCRIPTION_STATUS,
-    paymentStatus: ALL_PAYMENT_STATUS,
-  });
-
-  useEffect(() => {
-    if (mealPlanPage && mealPlanPage > 1) refetchMealPlans();
-  }, [mealPlanPage, refetchMealPlans]);
+  const [isOpenExportFilters, setIsOpenExportFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] =
+    useState<ClientSubscriptionAppliedFilters>(
+      createDefaultClientSubscriptionFilters
+    );
+  const [exportFilters, setExportFilters] =
+    useState<ClientSubscriptionExportFilters>(
+      createDefaultClientSubscriptionExportFilters
+    );
 
   const syncFiltersToQuery = useCallback(
-    (filters: AppliedFilters, mealPlanId?: string | null) => {
+    (filters: ClientSubscriptionAppliedFilters) => {
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        mealPlanId: mealPlanId || undefined,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-        subscriptionType:
-          filters.subscriptionType === ALL_SUBSCRIPTION_TYPES
-            ? undefined
-            : filters.subscriptionType,
-        subscriptionStatus:
-          filters.subscriptionStatus === ALL_SUBSCRIPTION_STATUS
-            ? undefined
-            : filters.subscriptionStatus,
-        paymentStatus:
-          filters.paymentStatus === ALL_PAYMENT_STATUS
-            ? undefined
-            : filters.paymentStatus,
+        ...buildClientSubscriptionFilterQueryParams(filters),
       }));
     },
     [setParameter]
   );
 
-  const handleMealPlanChange = (_event: unknown, value: IMealPlans | null) => {
-    setSelectedMealPlan(value);
-    syncFiltersToQuery(appliedFilters, value?.id ?? null);
+  const updateListFilters = (
+    updater: (
+      current: ClientSubscriptionAppliedFilters
+    ) => ClientSubscriptionAppliedFilters
+  ) => {
+    const next = updater(appliedFilters);
+    setAppliedFilters(next);
+    syncFiltersToQuery(next);
   };
 
-  const handleStartDateChange = (value: string) => {
-    const next = { ...appliedFilters, startDate: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next, selectedMealPlan?.id);
+  const handlePeriodChange = (value: ClientSubscriptionExportPeriod) => {
+    updateListFilters((current) => ({
+      ...current,
+      period: value,
+      fromDate: value === "custom" ? current.fromDate : "",
+      toDate: value === "custom" ? current.toDate : "",
+    }));
   };
 
-  const handleEndDateChange = (value: string) => {
-    const next = { ...appliedFilters, endDate: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next, selectedMealPlan?.id);
+  const handleFromDateChange = (value: string) => {
+    updateListFilters((current) => ({ ...current, fromDate: value }));
+  };
+
+  const handleToDateChange = (value: string) => {
+    updateListFilters((current) => ({ ...current, toDate: value }));
+  };
+
+  const handleStartDateFromChange = (value: string) => {
+    updateListFilters((current) => ({ ...current, startDateFrom: value }));
+  };
+
+  const handleStartDateToChange = (value: string) => {
+    updateListFilters((current) => ({ ...current, startDateTo: value }));
+  };
+
+  const handleEndDateFromChange = (value: string) => {
+    updateListFilters((current) => ({ ...current, endDateFrom: value }));
+  };
+
+  const handleEndDateToChange = (value: string) => {
+    updateListFilters((current) => ({ ...current, endDateTo: value }));
   };
 
   const handleSubscriptionTypeChange = (value: string) => {
-    const next = { ...appliedFilters, subscriptionType: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next, selectedMealPlan?.id);
+    updateListFilters((current) => ({ ...current, subscriptionType: value }));
   };
 
   const handleSubscriptionStatusChange = (value: string) => {
-    const next = { ...appliedFilters, subscriptionStatus: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next, selectedMealPlan?.id);
+    updateListFilters((current) => ({
+      ...current,
+      subscriptionStatus: value,
+    }));
   };
 
   const handlePaymentStatusChange = (value: string) => {
-    const next = { ...appliedFilters, paymentStatus: value };
-    setAppliedFilters(next);
-    syncFiltersToQuery(next, selectedMealPlan?.id);
+    updateListFilters((current) => ({ ...current, paymentStatus: value }));
   };
 
-  const handleClear = () => {
-    const cleared: AppliedFilters = {
-      startDate: "",
-      endDate: "",
-      subscriptionType: ALL_SUBSCRIPTION_TYPES,
-      subscriptionStatus: ALL_SUBSCRIPTION_STATUS,
-      paymentStatus: ALL_PAYMENT_STATUS,
-    };
+  const handleClearListFilters = () => {
+    const cleared = createDefaultClientSubscriptionFilters();
     setAppliedFilters(cleared);
-    setSelectedMealPlan(null);
-    setMealPlanSearchValue("");
-    setParameter((prev) => {
-      const {
-        mealPlanId,
-        startDate,
-        endDate,
-        subscriptionType: subType,
-        subscriptionStatus: subStatus,
-        paymentStatus: payStatus,
-        ...rest
-      } = prev;
-      return { ...rest, pageNumber: 1 };
-    });
+    setParameter((prev) => ({
+      ...prev,
+      pageNumber: 1,
+      period: undefined,
+      fromDate: undefined,
+      toDate: undefined,
+      startDateFrom: undefined,
+      startDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      subscriptionType: undefined,
+      subscriptionStatus: undefined,
+      paymentStatus: undefined,
+    }));
   };
 
-  const advanceFiltersInputs = [
-    <Box key="mealPlan" sx={{ minWidth: 220 }}>
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["mealPlans.name"] as string}
-      </Typography>
-      <AppBaseAutoComplete
-        label="mealPlans.name"
-        isLoading={isFetchingMealPlans}
-        options={mealPlansData?.data}
-        hasNextPage={mealPlansData?.hasNextPage}
-        pageNumber={mealPlanPage}
-        changePage={changeMealPlanPage}
-        value={selectedMealPlan}
-        onChangeAutoComplete={handleMealPlanChange}
-        onChangeTextField={(event) =>
-          setMealPlanSearchValue(event.target.value)
-        }
-      />
-    </Box>,
-    <Box key="startDate">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["common.startDate"] as string}
-      </Typography>
-      <OutlinedInput
-        type="date"
-        size="small"
-        value={appliedFilters.startDate}
-        onChange={(e) => handleStartDateChange(e.target.value)}
-        sx={dateInputSx}
-      />
-    </Box>,
-    <Box key="endDate">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["common.endDate"] as string}
-      </Typography>
-      <OutlinedInput
-        type="date"
-        size="small"
-        value={appliedFilters.endDate}
-        onChange={(e) => handleEndDateChange(e.target.value)}
-        sx={dateInputSx}
-      />
-    </Box>,
-    <Box key="subscriptionType">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["subscriptionPlans.subscriptionType"] as string}
-      </Typography>
-      <Select
-        size="small"
-        value={appliedFilters.subscriptionType}
-        onChange={(e) => handleSubscriptionTypeChange(e.target.value)}
-        sx={{ ...selectSx, minWidth: 170 }}
-      >
-        <MenuItem value={ALL_SUBSCRIPTION_TYPES} sx={{ fontSize: 13 }}>
-          {messages["common.all"] as string}
-        </MenuItem>
-        {SUBSCRIPTION_TYPE_OPTIONS.map(({ value, labelKey }) => (
-          <MenuItem key={value} value={value} sx={{ fontSize: 13 }}>
-            {messages[labelKey] as string}
-          </MenuItem>
-        ))}
-      </Select>
-    </Box>,
-    <Box key="subscriptionStatus">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["clients.subscriptionStatus"] as string}
-      </Typography>
-      <Select
-        size="small"
-        value={appliedFilters.subscriptionStatus}
-        onChange={(e) => handleSubscriptionStatusChange(e.target.value)}
-        sx={{ ...selectSx, minWidth: 170 }}
-      >
-        <MenuItem value={ALL_SUBSCRIPTION_STATUS} sx={{ fontSize: 13 }}>
-          {messages["common.all"] as string}
-        </MenuItem>
-        {SUBSCRIPTION_STATUS_OPTIONS.map(({ value, labelKey }) => (
-          <MenuItem key={value} value={value} sx={{ fontSize: 13 }}>
-            {messages[labelKey] as string}
-          </MenuItem>
-        ))}
-      </Select>
-    </Box>,
-    <Box key="paymentStatus">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["payments.paymentStatus"] as string}
-      </Typography>
-      <Select
-        size="small"
-        value={appliedFilters.paymentStatus}
-        onChange={(e) => handlePaymentStatusChange(e.target.value)}
-        sx={{ ...selectSx, minWidth: 170 }}
-      >
-        <MenuItem value={ALL_PAYMENT_STATUS} sx={{ fontSize: 13 }}>
-          {messages["common.all"] as string}
-        </MenuItem>
-        {PAYMENT_STATUS_OPTIONS.map(({ value, labelKey }) => (
-          <MenuItem key={value} value={value} sx={{ fontSize: 13 }}>
-            {messages[labelKey] as string}
-          </MenuItem>
-        ))}
-      </Select>
-    </Box>,
-    <Box key="clear" sx={{ ml: "auto" }}>
+  const handleExportTypeChange = (value: ClientSubscriptionExportType) => {
+    setExportFilters((current) => ({ ...current, exportType: value }));
+  };
+
+  const handleExportPaymentStatusChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, paymentStatus: value }));
+  };
+
+  const handleExportSubscriptionStatusChange = (value: string) => {
+    setExportFilters((current) => ({
+      ...current,
+      subscriptionStatus: value,
+    }));
+  };
+
+  const handleExportPeriodChange = (value: ClientSubscriptionExportPeriod) => {
+    setExportFilters((current) => ({
+      ...current,
+      period: value,
+      fromDate: value === "custom" ? current.fromDate : "",
+      toDate: value === "custom" ? current.toDate : "",
+    }));
+  };
+
+  const handleExportFromDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, fromDate: value }));
+  };
+
+  const handleExportToDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, toDate: value }));
+  };
+
+  const handleClearExportFilters = () => {
+    setExportFilters(createDefaultClientSubscriptionExportFilters());
+  };
+
+  const handleDownloadExport = async () => {
+    try {
+      await exportClientSubscriptions(exportFilters).unwrap();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleToggleExportFilters = () => {
+    const next = !isOpenExportFilters;
+    setIsOpenExportFilters(next);
+    if (next) {
+      setIsOpenAdvanceFilters(false);
+    }
+  };
+
+  const advanceFiltersInputs = buildClientSubscriptionFilterInputs({
+    filters: appliedFilters,
+    messages,
+    onPeriodChange: handlePeriodChange,
+    onFromDateChange: handleFromDateChange,
+    onToDateChange: handleToDateChange,
+    onStartDateFromChange: handleStartDateFromChange,
+    onStartDateToChange: handleStartDateToChange,
+    onEndDateFromChange: handleEndDateFromChange,
+    onEndDateToChange: handleEndDateToChange,
+    onSubscriptionTypeChange: handleSubscriptionTypeChange,
+    onSubscriptionStatusChange: handleSubscriptionStatusChange,
+    onPaymentStatusChange: handlePaymentStatusChange,
+    onClear: handleClearListFilters,
+  });
+
+  const exportFiltersInputs = buildClientSubscriptionExportFilterInputs({
+    filters: exportFilters,
+    messages,
+    onExportTypeChange: handleExportTypeChange,
+    onPaymentStatusChange: handleExportPaymentStatusChange,
+    onSubscriptionStatusChange: handleExportSubscriptionStatusChange,
+    onPeriodChange: handleExportPeriodChange,
+    onFromDateChange: handleExportFromDateChange,
+    onToDateChange: handleExportToDateChange,
+    onClear: handleClearExportFilters,
+    trailingActions: (
       <Button
-        onClick={handleClear}
+        variant="outlined"
+        startIcon={<FileDownloadOutlinedIcon />}
+        onClick={handleDownloadExport}
+        disabled={!exportFilters.exportType || isExporting}
         sx={{
-          color: "text.secondary",
+          height: 36,
+          px: 3,
+          borderRadius: 2,
+          borderColor: "#E2E8F0",
+          color: "#0F172A",
           textTransform: "none",
           fontWeight: 700,
-          "&:hover": { color: "#EF4444", bgcolor: "#FEE2E2" },
-          height: 36,
-          px: 2,
-          borderRadius: 2,
+          "&:hover": { bgcolor: "#F8FAFC" },
         }}
       >
-        Clear filters
+        {isExporting ? "Downloading..." : (messages["common.download"] as string)}
       </Button>
-    </Box>,
-  ];
+    ),
+  });
 
   return (
     <>
@@ -401,14 +276,23 @@ function ClientSubscriptionsPage() {
                   ) => {
                     setSearchValue(event.target.value);
                   }}
-                  successUrl={`${endPoints.clientSubscriptionsEndpoint().pathname}/search`}
+                  successUrl={`${endPoints.clientSubscriptionsEndpoint().pathname}/filter`}
                   selectionModel={selectionModel as string[]}
                   setSelectionModel={setSelectionModel}
                   refetch={refetch}
                   showAdvanceFiltersButton
                   isOpenAdvanceFilters={isOpenAdvanceFilters}
-                  setIsOpenAdvanceFilters={setIsOpenAdvanceFilters}
+                  setIsOpenAdvanceFilters={(open: boolean) => {
+                    setIsOpenAdvanceFilters(open);
+                    if (open) {
+                      setIsOpenExportFilters(false);
+                    }
+                  }}
                   advanceFiltersInputs={advanceFiltersInputs}
+                  isOpenExportFilters={isOpenExportFilters}
+                  exportFiltersInputs={exportFiltersInputs}
+                  showExportFiltersButton
+                  onToggleExportFilters={handleToggleExportFilters}
                 />
               </Grid>
               <Grid item xs={12} mt={6}>

@@ -12,6 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useIntl } from "react-intl";
+import { getSubscriptionStatusChipColor } from "../mapClientAccountData";
 import { ClientAccountData } from "../types";
 
 type Props = {
@@ -60,7 +61,7 @@ const ClientAccountHeader = ({
             <Chip
               label={client.subscriptionStatus}
               size="small"
-              color="success"
+              color={getSubscriptionStatusChipColor(client.subscriptionStatus)}
               sx={{ fontWeight: 600 }}
             />
           </Stack>

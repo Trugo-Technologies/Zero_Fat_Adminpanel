@@ -11,6 +11,7 @@ import KitchenMealCountPage from "src/pages/clients-module/kitchen/mealCount/Kit
 import KitchenOrderedMealPage from "src/pages/clients-module/kitchen/orderedMeal/KitchenOrderedMealPage";
 import PaymentsPage from "src/pages/clients-module/payments/PaymentsPage";
 import ClientAccountAccessPage from "src/pages/clients-module/clientAccountAccess";
+import ClientNotificationsPage from "src/pages/clients-module/clientAccountAccess/ClientNotificationsPage";
 import CreateSubscriptionPage from "src/pages/clients-module/clientAccountAccess/CreateSubscriptionPage";
 
 export const clientsModuleRoutes = [
@@ -18,6 +19,10 @@ export const clientsModuleRoutes = [
   {
     element: <ClientAccountAccessPage />,
     path: "/clientsManagement/clientAccountAccess",
+  },
+  {
+    element: <ClientNotificationsPage />,
+    path: "/clientsManagement/clientAccountAccess/notifications",
   },
   {
     element: <CreateSubscriptionPage />,

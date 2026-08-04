@@ -24,11 +24,18 @@ import {
 import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
+import dayjs from "dayjs";
+import {
+  buildUpdateClientAccountAccessPayload,
+  mapClientAccountAccessToClientData,
+} from "../mapClientAccountData";
+import { useUpdateClientAccountAccessMutation } from "../services/api";
 import { ClientAccountData } from "../types";
 
 type Props = {
   open: boolean;
   client: ClientAccountData;
+  clientId?: string | null;
   onClose: () => void;
   onSave: (updated: ClientAccountData) => void;
 };
@@ -85,14 +92,21 @@ const initialAddress = {
   notesFromZeroFat: "",
 };
 
-const EditClientModal = ({ open, client, onClose, onSave }: Props) => {
+const EditClientModal = ({ open, client, clientId, onClose, onSave }: Props) => {
   const { messages } = useIntl();
   const [form, setForm] = useState(client);
   const [addresses, setAddresses] = useState<any[]>([initialAddress]);
+  const [updateClientAccountAccess, { isLoading }] =
+    useUpdateClientAccountAccessMutation();
 
   useEffect(() => {
     if (open) {
-      setForm(client);
+      setForm({
+        ...client,
+        birthDate: client.birthDate
+          ? dayjs(client.birthDate).format("YYYY-MM-DD")
+          : "",
+      });
       setAddresses(
         client.deliveryAddresses?.length && typeof client.deliveryAddresses[0] === "object"
           ? client.deliveryAddresses
@@ -100,6 +114,37 @@ const EditClientModal = ({ open, client, onClose, onSave }: Props) => {
       );
     }
   }, [open, client]);
+
+  const handleSave = async () => {
+    const updatedLocal: ClientAccountData = {
+      ...form,
+      deliveryAddress: addresses[0]?.fullAddressEn || addresses[0]?.street || "",
+      deliveryAddresses: addresses,
+    };
+
+    if (!clientId) {
+      onSave(updatedLocal);
+      onClose();
+      return;
+    }
+
+    try {
+      const payload = buildUpdateClientAccountAccessPayload(form, addresses);
+      const result = await updateClientAccountAccess({
+        clientId,
+        data: payload,
+      }).unwrap();
+
+      if (result?.data) {
+        onSave(mapClientAccountAccessToClientData(result.data));
+      } else {
+        onSave(updatedLocal);
+      }
+      onClose();
+    } catch {
+      // Error toast handled in mutation
+    }
+  };
 
   const handleChange = (field: keyof ClientAccountData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -216,7 +261,7 @@ const EditClientModal = ({ open, client, onClose, onSave }: Props) => {
               fullWidth
               label={messages["clientAccountAccess.customerId"] as string}
               value={form.customerId}
-              onChange={(e) => handleChange("customerId", e.target.value)}
+              disabled
               sx={textFieldStyles}
             />
           </Grid>
@@ -416,14 +461,8 @@ const EditClientModal = ({ open, client, onClose, onSave }: Props) => {
         </Button>
         <Button
           variant="contained"
-          onClick={() => {
-            onSave({ 
-              ...form, 
-              deliveryAddress: addresses[0]?.fullAddressEn || "", 
-              deliveryAddresses: addresses 
-            });
-            onClose();
-          }}
+          disabled={isLoading}
+          onClick={handleSave}
           sx={(theme) => ({
             px: 4,
             py: 1.25,

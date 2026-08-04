@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import { useIntl } from "react-intl";
+import { getSubscriptionStatusChipColor } from "../mapClientAccountData";
 import { ClientAccountData } from "../types";
 
 type Props = {
@@ -84,7 +85,7 @@ const ClientProfileCard = ({ client }: Props) => {
           <Chip
             label={client.subscriptionStatus}
             size="small"
-            color="success"
+            color={getSubscriptionStatusChipColor(client.subscriptionStatus)}
             sx={{ mt: 1, fontWeight: 600 }}
           />
         </Box>
@@ -134,14 +135,22 @@ const ClientProfileCard = ({ client }: Props) => {
             label={
               messages["clientAccountAccess.subscriptionStart"] as string
             }
-            value={dayjs(client.subscriptionStartDate).format("MMM D, YYYY")}
+            value={
+              client.subscriptionStartDate
+                ? dayjs(client.subscriptionStartDate).format("MMM D, YYYY")
+                : "—"
+            }
           />
         </Grid>
         <Grid item xs={12} sm={6}>
           <InfoRow
             icon={<PersonIcon fontSize="small" />}
             label={messages["clientAccountAccess.subscriptionEnd"] as string}
-            value={dayjs(client.subscriptionEndDate).format("MMM D, YYYY")}
+            value={
+              client.subscriptionEndDate
+                ? dayjs(client.subscriptionEndDate).format("MMM D, YYYY")
+                : "—"
+            }
           />
         </Grid>
       </Grid>

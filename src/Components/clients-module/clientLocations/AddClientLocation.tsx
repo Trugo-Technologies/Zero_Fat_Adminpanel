@@ -2,7 +2,7 @@
 
 import { Grid, MenuItem } from "@mui/material";
 import { Form, Formik, FormikProps } from "formik";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import AppTextField from "src/@crema/components/AppFormComponents/AppTextField";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
@@ -26,9 +26,9 @@ interface IAddClientLocationProps {
 }
 
 const AddClientLocation: React.FC<IAddClientLocationProps> = (props) => {
-  const { showAddModal, setShowAddModal, label, clientId } = props;
+  const { showAddModal, setShowAddModal, label, clientId, onSuccess } = props;
 
-  const [addClientLocationMethod, { isLoading: addLoading, isSuccess }] =
+  const [addClientLocationMethod, { isLoading: addLoading, isSuccess, reset }] =
     useAddClientLocationMutation();
   const [currentLocation, setCurrentLocation] = useState<
     IAddressDto | undefined
@@ -38,6 +38,12 @@ const AddClientLocation: React.FC<IAddClientLocationProps> = (props) => {
   });
 
   const { messages } = useIntl();
+
+  useEffect(() => {
+    if (!isSuccess) return;
+    onSuccess?.();
+    reset();
+  }, [isSuccess, reset]);
 
   const validationSchema = yup.object({
     clientId: yup.string().required(String(messages["validation.required"])),

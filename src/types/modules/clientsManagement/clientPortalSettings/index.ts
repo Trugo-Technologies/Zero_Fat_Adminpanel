@@ -11,6 +11,7 @@ export interface IClientPortalSettingsDetails
 export interface IClientPortalSettings {
   nutriPlanStartegy: string;
   offsetSubscriptionInDays: number | null;
+  cutoffTime?: string | null;
   weeklyCaloricDeficit: number | null;
   weeklyCaloricSurplus: number | null;
   onePointEqualInMoney: number | null;
@@ -18,4 +19,5 @@ export interface IClientPortalSettings {
   monthlyPackageSubsciptionDiscount: number | null;
   minimumSubsciption: number | null;
   threeMonthlyPackageSubsciptionDiscount: number | null;
+  enableDailyMealSelections?: boolean;
 }

@@ -10,28 +10,46 @@ import {
   Typography,
   Box,
   alpha,
-  IconButton
+  IconButton,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import PaymentIcon from "@mui/icons-material/Payment";
 import CloseIcon from "@mui/icons-material/Close";
 import dayjs from "dayjs";
-import { useState } from "react";
 import { useIntl } from "react-intl";
 import { useTheme } from "@mui/material";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
 import { DeliveryDay } from "../types";
 
+const ONLINE_PAYMENT_METHOD = "online";
+
 type Props = {
   open: boolean;
+  clientId?: string | null;
   delivery: DeliveryDay | null;
   onClose: () => void;
-  onSave: (method: string) => void;
+  onSave: (method: string) => void | Promise<void>;
+  isSaving?: boolean;
+  errorMessage?: string | null;
 };
 
-const ChangeDeliveryMethodModal = ({ open, delivery, onClose, onSave }: Props) => {
+const ChangeDeliveryMethodModal = ({
+  open,
+  clientId,
+  delivery,
+  onClose,
+  onSave,
+  isSaving = false,
+  errorMessage = null,
+}: Props) => {
   const { messages } = useIntl();
   const theme = useTheme();
-  const [method, setMethod] = useState("Online");
+
+  const handleSave = async () => {
+    if (!delivery) return;
+    await onSave(ONLINE_PAYMENT_METHOD);
+  };
 
   return (
     <Dialog
@@ -79,19 +97,27 @@ const ChangeDeliveryMethodModal = ({ open, delivery, onClose, onSave }: Props) =
       </Box>
 
       <DialogContent sx={{ p: 4 }}>
+        {errorMessage ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {errorMessage}
+          </Alert>
+        ) : null}
         {delivery ? (
           <>
             <Typography sx={{ fontSize: 15, color: "text.secondary", mb: 3 }}>
               Selected Day: <strong>{dayjs(delivery.date).format("MMM D, YYYY")}</strong>
             </Typography>
             <FormControl fullWidth size="small">
-              <InputLabel>Payment Method</InputLabel>
+              <InputLabel>
+                <IntlMessages id="payments.paymentMethod" />
+              </InputLabel>
               <Select
-                value={method}
-                label="Payment Method"
-                onChange={(e) => setMethod(e.target.value)}
+                value={ONLINE_PAYMENT_METHOD}
+                label={messages["payments.paymentMethod"] as string}
               >
-                <MenuItem value="Online">Online</MenuItem>
+                <MenuItem value={ONLINE_PAYMENT_METHOD}>
+                  <IntlMessages id="clientAccountAccess.deliveryMethod.online" />
+                </MenuItem>
               </Select>
             </FormControl>
           </>
@@ -103,25 +129,23 @@ const ChangeDeliveryMethodModal = ({ open, delivery, onClose, onSave }: Props) =
       </DialogContent>
 
       <DialogActions sx={{ p: 3, borderTop: "1px solid #F1F5F9", bgcolor: "#F8FAFC" }}>
-        <Button onClick={onClose} sx={{ color: "text.secondary", fontWeight: 600, px: 3 }}>
+        <Button onClick={onClose} disabled={isSaving} sx={{ color: "text.secondary", fontWeight: 600, px: 3 }}>
           {messages["common.cancel"] as string}
         </Button>
         <Button
           variant="contained"
-          disabled={!delivery}
-          onClick={() => {
-            onSave(method);
-            onClose();
-          }}
+          disabled={!delivery || isSaving}
+          onClick={handleSave}
           sx={{
             bgcolor: "primary.main",
             color: "#FFFFFF",
             fontWeight: 700,
             px: 4,
             borderRadius: "10px",
+            minWidth: 100,
           }}
         >
-          {messages["common.save"] as string}
+          {isSaving ? <CircularProgress size={22} color="inherit" /> : (messages["common.save"] as string)}
         </Button>
       </DialogActions>
     </Dialog>

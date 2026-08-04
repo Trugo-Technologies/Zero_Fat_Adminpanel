@@ -2,7 +2,6 @@
 
 import {
   Alert,
-  Box,
   Button,
   Card,
   CardContent,
@@ -17,6 +16,11 @@ import { Fonts } from "src/@crema/constants/AppEnums";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
 import CutoffTimeSettingsCard from "../components/CutoffTimeSettingsCard";
 import { DeliveryStatusChip } from "../components/statusChip";
+import {
+  DeliveryCutoffSettings,
+  formatDeliveryCutoffLabel,
+  isDeliveryPastCutoff,
+} from "../deliveryCutoff";
 import { DeliveryDay } from "../types";
 import PaymentIcon from "@mui/icons-material/Payment";
 import BlockIcon from "@mui/icons-material/Block";
@@ -25,19 +29,17 @@ import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import RestaurantMenuIcon from "@mui/icons-material/RestaurantMenu";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
-type ScopeOption = "thisDay" | "upcoming" | "entireOrder" | "mealPlanOnly";
-
 type Props = {
   selectedDelivery: DeliveryDay | null;
   selectedDate: Dayjs | null;
   onSelectedDateChange: (date: Dayjs | null) => void;
   deliveries: DeliveryDay[];
-  cutoffEnabled: boolean;
-  cutoffValue: number;
-  cutoffUnit: string;
-  onCutoffEnabledChange: (enabled: boolean) => void;
-  onCutoffValueChange: (value: number) => void;
-  onCutoffUnitChange: (unit: string) => void;
+  cutoffSettings?: DeliveryCutoffSettings | null;
+  isCutoffLoading?: boolean;
+  /** Only admins can toggle cutoff validation bypass. */
+  canBypassCutoff?: boolean;
+  bypassCutoffEnabled?: boolean;
+  onBypassCutoffEnabledChange?: (enabled: boolean) => void;
   onOpenChangeMethod: () => void;
   onOpenCancelDelivery: () => void;
   onOpenMoveDelivery: () => void;
@@ -51,12 +53,11 @@ const AdjustmentsReplaceTab = ({
   selectedDate,
   onSelectedDateChange,
   deliveries,
-  cutoffEnabled,
-  cutoffValue,
-  cutoffUnit,
-  onCutoffEnabledChange,
-  onCutoffValueChange,
-  onCutoffUnitChange,
+  cutoffSettings,
+  isCutoffLoading = false,
+  canBypassCutoff = false,
+  bypassCutoffEnabled = false,
+  onBypassCutoffEnabledChange,
   onOpenChangeMethod,
   onOpenCancelDelivery,
   onOpenMoveDelivery,
@@ -65,7 +66,7 @@ const AdjustmentsReplaceTab = ({
   onOpenReplaceMeals,
 }: Props) => {
   const { messages } = useIntl();
-  const isPastCutoff = false; // Logic for cut-off based on hours/days before delivery can be implemented here if needed.
+  const cutoffBypassed = canBypassCutoff && bypassCutoffEnabled;
 
   const deliveryForDate =
     selectedDelivery ??
@@ -73,6 +74,28 @@ const AdjustmentsReplaceTab = ({
       ? deliveries.find((d) => d.date === selectedDate.format("YYYY-MM-DD")) ??
         null
       : null);
+
+  const deliveryDate =
+    deliveryForDate?.date ?? selectedDate?.format("YYYY-MM-DD") ?? null;
+  const isPastDeliveryDate = Boolean(
+    deliveryDate && dayjs(deliveryDate).isBefore(dayjs().startOf("day"))
+  );
+  const isPastCutoff = isDeliveryPastCutoff(deliveryDate, cutoffSettings);
+  const actionsDisabled =
+    !deliveryForDate ||
+    isPastDeliveryDate ||
+    (isPastCutoff && !cutoffBypassed) ||
+    deliveryForDate.status === "Delivered";
+
+  const actionsDisabledMessage = isPastDeliveryDate
+    ? "Actions cannot be performed on past deliveries."
+    : deliveryForDate?.status === "Delivered"
+      ? "Actions cannot be performed on delivered deliveries."
+      : isPastCutoff
+        ? cutoffBypassed
+          ? null
+          : (messages["clientAccountAccess.cutoffLocked"] as string)
+        : null;
 
   const actionCards = [
     {
@@ -148,24 +171,29 @@ const AdjustmentsReplaceTab = ({
         </Card>
       </Grid>
 
-      {isPastCutoff && (
-        <Grid item xs={12}>
-          <Alert severity="warning">
-            {messages["clientAccountAccess.cutoffLocked"] as string}
-          </Alert>
-        </Grid>
-      )}
-
       <Grid item xs={12}>
         <CutoffTimeSettingsCard
-          cutoffValue={cutoffValue}
-          cutoffUnit={cutoffUnit}
-          enabled={cutoffEnabled}
-          onCutoffValueChange={onCutoffValueChange}
-          onCutoffUnitChange={onCutoffUnitChange}
-          onEnabledChange={onCutoffEnabledChange}
+          settings={cutoffSettings}
+          isLoading={isCutoffLoading}
+          canBypassCutoff={canBypassCutoff}
+          bypassCutoffEnabled={bypassCutoffEnabled}
+          onBypassCutoffEnabledChange={onBypassCutoffEnabledChange}
         />
       </Grid>
+
+      {actionsDisabledMessage && deliveryForDate ? (
+        <Grid item xs={12}>
+          <Alert severity="warning">
+            {actionsDisabledMessage}
+            {isPastCutoff && cutoffSettings ? (
+              <>
+                {" "}
+                ({formatDeliveryCutoffLabel(cutoffSettings)})
+              </>
+            ) : null}
+          </Alert>
+        </Grid>
+      ) : null}
 
       {actionCards.map((card) => (
         <Grid item xs={12} md={4} key={card.title}>
@@ -184,9 +212,9 @@ const AdjustmentsReplaceTab = ({
                 variant="contained"
                 fullWidth
                 size="small"
-                disabled={!deliveryForDate || isPastCutoff}
+                disabled={actionsDisabled}
                 onClick={card.onClick}
-                color={(card as any).isRed ? "error" : "primary"}
+                color={(card as { isRed?: boolean }).isRed ? "error" : "primary"}
               >
                 <IntlMessages id={card.action} />
               </Button>

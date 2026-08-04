@@ -6,9 +6,7 @@ import {
   alpha,
   Box,
   Button,
-  Chip,
   FormControlLabel,
-  Grid,
   Radio,
   RadioGroup,
   Stack,
@@ -17,17 +15,21 @@ import {
 } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import dayjs, { Dayjs } from "dayjs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import IntlMessages from "src/@crema/helpers/IntlMessages";
-import { AccessStatus, ClientAccountData } from "../types";
-import ProfileInfoCard from "./profile/ProfileInfoCard";
-import { cardTitle } from "./profile/profileTheme";
+import { blockOptionToUiType } from "../mapClientAccountData";
+import { ClientAccountData } from "../types";
 
 type Props = {
   client: ClientAccountData;
-  onUnblock: () => void;
-  onBlock: (type: "oneDay" | "custom" | "permanent", expiry?: Dayjs) => void;
+  onUnblock: () => void | Promise<void>;
+  onBlock: (
+    type: "oneDay" | "custom" | "permanent",
+    expiry?: Dayjs
+  ) => void | Promise<void>;
+  isBlocking?: boolean;
+  isUnblocking?: boolean;
 };
 
 type BlockOption = "oneDay" | "custom" | "permanent";
@@ -50,32 +52,43 @@ const blockOptions: { value: BlockOption; titleKey: string; descKey: string }[] 
   },
 ];
 
-const statusLabel: Record<AccessStatus, string> = {
-  Active: "clientAccountAccess.status.active",
-  Blocked: "clientAccountAccess.status.blocked",
-  TemporaryBlock: "clientAccountAccess.status.tempBlocked",
-};
-
-const statusColor: Record<AccessStatus, "success" | "error" | "warning"> = {
-  Active: "success",
-  Blocked: "error",
-  TemporaryBlock: "warning",
-};
-
-const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
+const AccessControlCard = ({
+  client,
+  onUnblock,
+  onBlock,
+  isBlocking = false,
+  isUnblocking = false,
+}: Props) => {
   const { messages } = useIntl();
   const theme = useTheme();
   const [blockType, setBlockType] = useState<BlockOption>("oneDay");
   const [customDate, setCustomDate] = useState<Dayjs | null>(dayjs().add(1, "day"));
 
-  const isActive = client.accessStatus === "Active";
+  const isBlocked = client.blockOption > 0;
 
-  const handleBlock = () => {
-    if (blockType === "custom") {
-      onBlock("custom", customDate ?? undefined);
-    } else {
-      onBlock(blockType);
+  useEffect(() => {
+    if (!isBlocked) {
+      setBlockType("oneDay");
+      setCustomDate(dayjs().add(1, "day"));
+      return;
     }
+
+    setBlockType(blockOptionToUiType(client.blockOption));
+    if (client.blockExpiryDate) {
+      setCustomDate(dayjs(client.blockExpiryDate));
+    }
+  }, [client.id, client.blockOption, client.blockExpiryDate, isBlocked]);
+
+  const handleBlock = async () => {
+    if (blockType === "custom") {
+      await onBlock("custom", customDate ?? undefined);
+    } else {
+      await onBlock(blockType);
+    }
+  };
+
+  const handleUnblock = async () => {
+    await onUnblock();
   };
 
   return (
@@ -92,43 +105,6 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
         <IntlMessages id="clientAccountAccess.accessControl" />
       </Typography>
 
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        spacing={1.5}
-        sx={{ mb: 2.5 }}
-      >
-        <Stack spacing={0.5}>
-          <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 600 }}>
-            <IntlMessages id="clientAccountAccess.currentStatus" />
-          </Typography>
-          <Chip
-            label={messages[statusLabel[client.accessStatus]] as string}
-            color={statusColor[client.accessStatus]}
-            size="small"
-            sx={{ width: "fit-content", fontWeight: 700, fontSize: 12, height: 24 }}
-          />
-        </Stack>
-        <Box sx={{ textAlign: "right" }}>
-          <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 600, mb: 0.25 }}>
-            <IntlMessages id="clientAccountAccess.lastLogin" />
-          </Typography>
-          <Typography sx={{ fontSize: 14, fontWeight: 700 }}>
-            {client.lastLoginDate
-              ? dayjs(client.lastLoginDate).format("MMM D, YYYY")
-              : "—"}
-          </Typography>
-        </Box>
-      </Stack>
-
-      {!isActive && client.blockExpiryDate && (
-        <Typography sx={{ fontSize: 13, color: "warning.main", fontWeight: 600, mb: 2 }}>
-          {messages["clientAccountAccess.blockExpiry"] as string}:{" "}
-          {dayjs(client.blockExpiryDate).format("MMM D, YYYY · h:mm A")}
-        </Typography>
-      )}
-
       <Box sx={{ mb: 2.5 }}>
         <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 600, mb: 1, textTransform: "uppercase" }}>
           <IntlMessages id="clientAccountAccess.blockOptions" />
@@ -144,7 +120,11 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
               return (
                 <Box
                   key={opt.value}
-                  onClick={() => setBlockType(opt.value)}
+                  onClick={() => {
+                    if (!isBlocked) {
+                      setBlockType(opt.value);
+                    }
+                  }}
                   sx={{
                     p: 1.5,
                     borderRadius: "10px",
@@ -152,16 +132,21 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
                       selected ? theme.palette.primary.main : alpha(theme.palette.divider, 0.4)
                     }`,
                     bgcolor: selected ? alpha(theme.palette.primary.main, 0.04) : "transparent",
-                    cursor: "pointer",
+                    cursor: isBlocked ? "not-allowed" : "pointer",
+                    opacity: isBlocked ? 0.6 : 1,
                     transition: "all 0.2s",
-                    "&:hover": {
-                      borderColor: selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                    }
+                    "&:hover": isBlocked
+                      ? {}
+                      : {
+                          borderColor: selected
+                            ? theme.palette.primary.main
+                            : theme.palette.text.secondary,
+                        },
                   }}
                 >
                   <FormControlLabel
                     value={opt.value}
-                    control={<Radio size="small" />}
+                    control={<Radio size="small" disabled={isBlocked} />}
                     label={
                       <Box>
                         <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
@@ -172,6 +157,7 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
                         </Typography>
                       </Box>
                     }
+                    disabled={isBlocked}
                     sx={{ m: 0, alignItems: "flex-start" }}
                   />
                 </Box>
@@ -181,12 +167,13 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
         </RadioGroup>
       </Box>
 
-      {blockType === "custom" && (
+      {blockType === "custom" && !isBlocked && (
         <Box sx={{ mb: 2.5 }}>
           <DateTimePicker
             label={messages["clientAccountAccess.blockDateTime"] as string}
             value={customDate}
             onChange={setCustomDate}
+            disabled={isBlocked}
             slotProps={{ textField: { fullWidth: true, size: "small" } }}
           />
         </Box>
@@ -198,7 +185,7 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
           color="error"
           startIcon={<BlockIcon />}
           onClick={handleBlock}
-          disabled={!isActive && blockType === "permanent"}
+          disabled={isBlocked || isBlocking || isUnblocking}
           fullWidth
           sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px", boxShadow: "none" }}
         >
@@ -208,8 +195,8 @@ const AccessControlCard = ({ client, onUnblock, onBlock }: Props) => {
           variant="outlined"
           color="success"
           startIcon={<LockOpenIcon />}
-          onClick={onUnblock}
-          disabled={isActive}
+          onClick={handleUnblock}
+          disabled={!isBlocked || isUnblocking || isBlocking}
           fullWidth
           sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}
         >

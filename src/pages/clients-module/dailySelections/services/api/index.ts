@@ -7,6 +7,7 @@ import {
   IDailySelectionsDetails,
   IDailySelectionsListDto,
 } from "src/types/modules/clientsManagement/dailySelections";
+import { buildDailySelectionsFilterRequest } from "../../dailySelectionFilterHelpers";
 
 const apiService = api
   .enhanceEndpoints({ addTagTypes: ["dailySelections"] })
@@ -14,13 +15,11 @@ const apiService = api
     endpoints: ({ query }) => ({
       getAllDailySelections: query<IDailySelectionsListDto, ArgsType>({
         providesTags: ["dailySelections"],
-        query: (props) => {
-          return {
-            url: `${endPoints.dailySelections().pathname}/search`,
-            method: "POST",
-            data: props,
-          };
-        },
+        query: (props) => ({
+          url: `${endPoints.dailySelections().pathname}/filter`,
+          method: "GET",
+          params: buildDailySelectionsFilterRequest(props),
+        }),
       }),
 
       getDailySelection: query<IDailySelectionsDetails, ArgsType>({

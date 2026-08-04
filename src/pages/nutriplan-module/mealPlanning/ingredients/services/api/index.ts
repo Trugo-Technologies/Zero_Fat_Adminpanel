@@ -10,20 +10,20 @@ import {
   IIngredientsDetailsDto,
   IIngredientsListDto,
 } from "src/types/modules/nutriplan/mealPlanning/ingredients";
+import { buildIngredientsFilterRequest } from "../../ingredientFilterHelpers";
 
 const apiService = api
   .enhanceEndpoints({ addTagTypes: ["Ingredients"] })
   .injectEndpoints({
+    overrideExisting: true,
     endpoints: ({ query, mutation }) => ({
       getAllIngredients: query<IIngredientsListDto, ArgsType>({
         providesTags: ["Ingredients"],
-        query: (props) => {
-          return {
-            url: `${endPoints.ingredients().pathname}/search`,
-            method: "POST",
-            data: props,
-          };
-        },
+        query: (props) => ({
+          url: `${endPoints.ingredients().pathname}/filter`,
+          method: "GET",
+          params: buildIngredientsFilterRequest(props),
+        }),
       }),
       // addIngredients: mutation<void, any>({
       //   invalidatesTags: ['Ingredients'],

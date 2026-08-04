@@ -8,6 +8,7 @@ const DishRatingDetails = React.lazy(() => import("src/pages/dashboard/DishRatin
 const LowRatingAlerts = React.lazy(() => import("src/pages/dashboard/LowRatingAlerts"));
 const AllFeedback = React.lazy(() => import("src/pages/dashboard/AllFeedback"));
 const NotificationLogsDashboard = React.lazy(() => import("src/pages/dashboard/NotificationLogsDashboard"));
+const ManageNotificationsPage = React.lazy(() => import("src/pages/dashboard/notificationLogs/ManageNotificationsPage"));
 
 export const DashboardRoutes = [
   {
@@ -21,6 +22,10 @@ export const DashboardRoutes = [
   {
     path: "/notification-logs",
     element: <NotificationLogsDashboard />,
+  },
+  {
+    path: "/notification-logs/manage",
+    element: <ManageNotificationsPage />,
   },
   {
     path: "/meal-ratings/top-rated-dishes",

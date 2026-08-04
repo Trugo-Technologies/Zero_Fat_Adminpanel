@@ -49,6 +49,8 @@ export interface IDiscountRule extends IBaseAdditionalResponseDetailsDto {
   maxRedemptionsPerClient: number | null;
   firstTimeClientsOnly: boolean;
   isActive: boolean;
+  /** Present when the rule has been published to Stripe. */
+  isPublished?: boolean;
   descriptionEn: string | null;
   descriptionAr: string | null;
 }

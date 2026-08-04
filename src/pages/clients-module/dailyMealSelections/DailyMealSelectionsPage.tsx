@@ -115,8 +115,8 @@ function DailyMealSelectionsPage({ clientName }: { clientName?: string }) {
   };
 
   const handleExport = () => {
-    const getNestedValue = (obj: Record<string, unknown>, path: string) =>
-      path.split(".").reduce<any>((acc, key) => acc?.[key], obj);
+    const getNestedValue = (obj: object, path: string) =>
+      path.split(".").reduce<any>((acc, key) => (acc as any)?.[key], obj);
 
     const exportedRows = data?.data?.map((row) => {
       const newRow: Record<string, unknown> = {};

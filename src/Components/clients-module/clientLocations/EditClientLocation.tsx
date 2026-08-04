@@ -35,8 +35,14 @@ interface IEditClientLocationProps {
 const EditClientLocation: React.FC<IEditClientLocationProps> = (props) => {
   const { messages, locale } = useIntl();
 
-  const { showEditModal, setShowEditModal, label, clientId, selectedRow } =
-    props;
+  const {
+    showEditModal,
+    setShowEditModal,
+    label,
+    clientId,
+    selectedRow,
+    onSuccess,
+  } = props;
   const [currentLocation, setCurrentLocation] = useState<
     IAddressDto | undefined
   >({
@@ -52,7 +58,7 @@ const EditClientLocation: React.FC<IEditClientLocationProps> = (props) => {
     );
   const [
     updateClientLocationMethod,
-    { isLoading: editLoading, isSuccess, error },
+    { isLoading: editLoading, isSuccess, error, reset },
   ] = useEditClientLocationMutation();
 
   const refForm = React.useRef<FormikProps<IUpdateClientLocation>>(null);
@@ -75,6 +81,12 @@ const EditClientLocation: React.FC<IEditClientLocationProps> = (props) => {
       longitude: clientLocationItem?.data?.longitude!,
     });
   }, [clientLocationItem]);
+
+  useEffect(() => {
+    if (!isSuccess) return;
+    onSuccess?.();
+    reset();
+  }, [isSuccess, reset]);
 
   const submit = () => {
     if (refForm.current) {

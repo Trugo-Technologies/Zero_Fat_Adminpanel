@@ -1,14 +1,7 @@
 /** @format */
 
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Grid,
-  OutlinedInput,
-  Typography,
-} from "@mui/material";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import { Button, Card, CardContent, Grid } from "@mui/material";
 import moment from "moment";
 import { useCallback, useEffect, useState } from "react";
 import { useIntl } from "react-intl";
@@ -16,22 +9,26 @@ import { useParams } from "react-router-dom";
 import AppBreadcrumb from "src/Components/baseComponents/breadcrumb/AppBreadcrumb";
 import AppDataGrid from "src/Components/baseComponents/dataGrid/AppDataGrid";
 import AppFilters from "src/Components/baseComponents/filters/AppFilters";
-import AppBaseAutoComplete from "src/Components/baseComponents/inputs/autoComplete/AppBaseAutoComplete";
 import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
 import { IClient, IClientsListDto } from "src/types/modules/clientsManagement/clients";
 import { useGetAllClientsQuery } from "../../clients/services/api";
-import { useGetAllKitchenOrderedMealQuery } from "./services/api";
+import { buildKitchenOrderedMealExportFilterInputs } from "./buildKitchenOrderedMealExportFilterInputs";
+import { buildKitchenOrderedMealFilterInputs } from "./buildKitchenOrderedMealFilterInputs";
+import {
+  KitchenOrderedMealAppliedFilters,
+  KitchenOrderedMealExportFilters,
+  KitchenOrderedMealExportPeriod,
+  buildKitchenOrderedMealFilterQueryParams,
+  createDefaultKitchenOrderedMealExportFilters,
+  createDefaultKitchenOrderedMealFilters,
+} from "./kitchenOrderedMealFilterHelpers";
+import {
+  useExportKitchenOrderedMealMutation,
+  useGetAllKitchenOrderedMealQuery,
+} from "./services/api";
 import useKitchenOrderedMeal from "./useKitchenOrderedMeal";
-
-const dateInputSx = {
-  borderRadius: 2,
-  height: 36,
-  fontSize: 13,
-  minWidth: 150,
-  "& fieldset": { borderColor: "#E2E8F0" },
-};
 
 function KitchenOrderedMealPage() {
   const { messages, locale } = useIntl();
@@ -60,6 +57,8 @@ function KitchenOrderedMealPage() {
   );
   const { columns, selectionModel, setSelectionModel } =
     useKitchenOrderedMeal();
+  const [exportKitchenOrderedMeal, { isLoading: isExporting }] =
+    useExportKitchenOrderedMealMutation();
 
   const {
     changePage: changePageClients,
@@ -74,7 +73,15 @@ function KitchenOrderedMealPage() {
   });
 
   const [isOpenAdvanceFilters, setIsOpenAdvanceFilters] = useState(false);
-  const [appliedDate, setAppliedDate] = useState(currentDate);
+  const [isOpenExportFilters, setIsOpenExportFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] =
+    useState<KitchenOrderedMealAppliedFilters>(() =>
+      createDefaultKitchenOrderedMealFilters(currentDate)
+    );
+  const [exportFilters, setExportFilters] =
+    useState<KitchenOrderedMealExportFilters>(
+      createDefaultKitchenOrderedMealExportFilters
+    );
   const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
 
   useEffect(() => {
@@ -82,29 +89,39 @@ function KitchenOrderedMealPage() {
   }, [pageClients, refetchClients]);
 
   const syncFiltersToQuery = useCallback(
-    (date: string, clientId?: string | null) => {
+    (filters: KitchenOrderedMealAppliedFilters, clientId?: string | null) => {
       setParameter((prev) => ({
         ...prev,
         pageNumber: 1,
-        date: date || currentDate,
-        clientId: clientIdParams ?? clientId ?? null,
+        ...buildKitchenOrderedMealFilterQueryParams(
+          filters,
+          currentDate,
+          clientIdParams ?? clientId
+        ),
       }));
     },
     [setParameter, clientIdParams, currentDate]
   );
 
   const handleDateChange = (value: string) => {
-    setAppliedDate(value);
-    syncFiltersToQuery(value, selectedClient?.id ?? null);
+    const next = { ...appliedFilters, date: value };
+    setAppliedFilters(next);
+    syncFiltersToQuery(next, selectedClient?.id ?? null);
   };
 
   const handleClientChange = (_event: unknown, value: IClient | null) => {
     setSelectedClient(value);
-    syncFiltersToQuery(appliedDate, value?.id ?? null);
+    syncFiltersToQuery(appliedFilters, value?.id ?? null);
   };
 
-  const handleClear = () => {
-    setAppliedDate(currentDate);
+  const handleClientSearchChange = (value: string) => {
+    setSearchValueClients(value);
+    changePageClients(1);
+  };
+
+  const handleClearListFilters = () => {
+    const cleared = createDefaultKitchenOrderedMealFilters(currentDate);
+    setAppliedFilters(cleared);
     if (!clientIdParams) {
       setSelectedClient(null);
       setSearchValueClients("");
@@ -117,69 +134,93 @@ function KitchenOrderedMealPage() {
     }));
   };
 
-  const advanceFiltersInputs = [
-    <Box key="date">
-      <Typography
-        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-      >
-        {messages["dailySelections.date"] as string}
-      </Typography>
-      <OutlinedInput
-        type="date"
-        size="small"
-        value={appliedDate}
-        onChange={(e) => handleDateChange(e.target.value)}
-        sx={dateInputSx}
-      />
-    </Box>,
-    !clientIdParams ? (
-      <Box key="client" sx={{ minWidth: 220 }}>
-        <Typography
-          sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
-        >
-          {messages["sidebar.clients"] as string}
-        </Typography>
-        <AppBaseAutoComplete
-          label="sidebar.clients"
-          isLoading={isFetchingClients}
-          options={clientsList?.data}
-          hasNextPage={clientsList?.hasNextPage}
-          getOptionLabel={(option) =>
-            locale === "ar-SA"
-              ? (option?.fullNameAr ?? option?.mobile)
-              : (option?.fullNameEn ?? option?.mobile)
-          }
-          filterKey={locale === "ar-SA" ? "fullNameAr" : "fullNameEn"}
-          anotherFilterKey="mobile"
-          pageNumber={pageClients}
-          changePage={changePageClients}
-          value={selectedClient}
-          onChangeAutoComplete={handleClientChange}
-          searchText={searchValueClients}
-          onChangeTextField={(event) => {
-            setSearchValueClients(event.target.value);
-            changePageClients(1);
-          }}
-        />
-      </Box>
-    ) : null,
-    <Box key="clear" sx={{ ml: "auto" }}>
+  const handleExportPeriodChange = (value: KitchenOrderedMealExportPeriod) => {
+    setExportFilters((current) => ({
+      ...current,
+      period: value,
+      fromDate: value === "custom" ? current.fromDate : "",
+      toDate: value === "custom" ? current.toDate : "",
+    }));
+  };
+
+  const handleExportFromDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, fromDate: value }));
+  };
+
+  const handleExportToDateChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, toDate: value }));
+  };
+
+  const handleExportStatusChange = (value: string) => {
+    setExportFilters((current) => ({ ...current, status: value }));
+  };
+
+  const handleClearExportFilters = () => {
+    setExportFilters(createDefaultKitchenOrderedMealExportFilters());
+  };
+
+  const handleDownloadExport = async () => {
+    try {
+      await exportKitchenOrderedMeal(exportFilters).unwrap();
+    } catch {
+      // Errors are handled in the mutation.
+    }
+  };
+
+  const handleToggleExportFilters = () => {
+    const next = !isOpenExportFilters;
+    setIsOpenExportFilters(next);
+    if (next) {
+      setIsOpenAdvanceFilters(false);
+    }
+  };
+
+  const advanceFiltersInputs = buildKitchenOrderedMealFilterInputs({
+    filters: appliedFilters,
+    messages,
+    locale,
+    showClientFilter: !clientIdParams,
+    selectedClient,
+    clientsList,
+    isFetchingClients,
+    pageClients,
+    searchValueClients: searchValueClients ?? "",
+    changePageClients,
+    onDateChange: handleDateChange,
+    onClientChange: handleClientChange,
+    onClientSearchChange: handleClientSearchChange,
+    onClear: handleClearListFilters,
+  });
+
+  const exportFiltersInputs = buildKitchenOrderedMealExportFilterInputs({
+    filters: exportFilters,
+    messages,
+    onPeriodChange: handleExportPeriodChange,
+    onFromDateChange: handleExportFromDateChange,
+    onToDateChange: handleExportToDateChange,
+    onStatusChange: handleExportStatusChange,
+    onClear: handleClearExportFilters,
+    trailingActions: (
       <Button
-        onClick={handleClear}
+        variant="outlined"
+        startIcon={<FileDownloadOutlinedIcon />}
+        onClick={handleDownloadExport}
+        disabled={isExporting}
         sx={{
-          color: "text.secondary",
+          height: 36,
+          px: 3,
+          borderRadius: 2,
+          borderColor: "#E2E8F0",
+          color: "#0F172A",
           textTransform: "none",
           fontWeight: 700,
-          "&:hover": { color: "#EF4444", bgcolor: "#FEE2E2" },
-          height: 36,
-          px: 2,
-          borderRadius: 2,
+          "&:hover": { bgcolor: "#F8FAFC" },
         }}
       >
-        Clear filters
+        {isExporting ? "Downloading..." : (messages["common.download"] as string)}
       </Button>
-    </Box>,
-  ].filter(Boolean);
+    ),
+  });
 
   return (
     <>
@@ -209,8 +250,17 @@ function KitchenOrderedMealPage() {
                   refetch={refetch}
                   showAdvanceFiltersButton
                   isOpenAdvanceFilters={isOpenAdvanceFilters}
-                  setIsOpenAdvanceFilters={setIsOpenAdvanceFilters}
+                  setIsOpenAdvanceFilters={(open: boolean) => {
+                    setIsOpenAdvanceFilters(open);
+                    if (open) {
+                      setIsOpenExportFilters(false);
+                    }
+                  }}
                   advanceFiltersInputs={advanceFiltersInputs}
+                  isOpenExportFilters={isOpenExportFilters}
+                  exportFiltersInputs={exportFiltersInputs}
+                  showExportFiltersButton
+                  onToggleExportFilters={handleToggleExportFilters}
                 />
               </Grid>
               <Grid item xs={12} mt={4}>

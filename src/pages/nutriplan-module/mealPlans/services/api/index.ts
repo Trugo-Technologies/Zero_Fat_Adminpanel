@@ -1,10 +1,12 @@
 /** @format */
 
 import { showErrorToasts } from "src/Components/toasts";
+import { downloadAuthenticatedFile } from "src/Helpers/download-authenticated-file";
 import { api } from "src/redux-config/store";
 import { endPoints } from "src/shared/end-points";
 import { ArgsType } from "src/types";
-import { IBaseErrorResponse } from "src/types/baseEntity";
+import { IBaseErrorResponse, IBaseResponseDetailsDto } from "src/types/baseEntity";
+import { MealPlanExportFilters, buildMealPlanExportParams, buildMealPlansSearchRequest } from "../../mealPlanFilterHelpers";
 
 import { serialize } from "object-to-formdata";
 import {
@@ -23,9 +25,19 @@ const apiService = api
           return {
             url: `${endPoints.mealPlans().pathname}/search`,
             method: "POST",
-            data: props,
+            data: buildMealPlansSearchRequest(props),
           };
         },
+        keepUnusedDataFor: 0,
+      }),
+
+      getActiveMealPlans: query<IBaseResponseDetailsDto<IMealPlans[]>, void>({
+        providesTags: ["mealPlans"],
+        query: () => ({
+          url: endPoints.mealPlans().pathname,
+          method: "GET",
+          params: { isActive: true },
+        }),
         keepUnusedDataFor: 0,
       }),
 
@@ -102,13 +114,39 @@ const apiService = api
           method: "DELETE",
         }),
       }),
+      exportMealPlans: mutation<void, MealPlanExportFilters>({
+        queryFn: async (filters) => {
+          try {
+            await downloadAuthenticatedFile({
+              path: `${endPoints.mealPlans().pathname}/export`,
+              params: buildMealPlanExportParams(filters),
+              defaultFilename: "meal-plans.xlsx",
+              forceExtension: "xlsx",
+            });
+
+            return { data: undefined };
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Download failed";
+            showErrorToasts(message);
+            return {
+              error: {
+                status: "FETCH_ERROR",
+                error: message,
+              },
+            };
+          }
+        },
+      }),
     }),
   });
 export const {
   useGetAllMealPlansQuery,
+  useGetActiveMealPlansQuery,
   useGetMealPlanQuery,
   useAddMealPlansMutation,
   useEditMealPlansMutation,
   useDeleteMealPlanMutation,
   useUpdateActiveMealPlansMutation,
+  useExportMealPlansMutation,
 } = apiService;

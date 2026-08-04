@@ -172,7 +172,6 @@ const ExercisesPage = () => {
         {messages["trainers.name"] as string}
       </Typography>
       <AppBaseAutoComplete
-        label="trainers.name"
         isLoading={isFetchingTrainers}
         options={trainersData?.data}
         hasNextPage={trainersData?.hasNextPage}
