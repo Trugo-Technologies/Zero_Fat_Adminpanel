@@ -9,6 +9,7 @@ import CategoriesPage from "src/pages/nutriplan-module/Categories/CategoriesPage
 import ConfigurtionForm from "src/pages/nutriplan-module/configuration/ConfigurtionForm";
 import CustomizationOptionsPage from "src/pages/nutriplan-module/mealPlanning/customizationOptions/CustomizationOptionsPage";
 import CustomizationGroupsPage from "src/pages/nutriplan-module/mealPlanning/customizationGroups/CustomizationGroupsPage";
+import CustomizePricingPage from "src/pages/nutriplan-module/mealPlanning/customizePricing/CustomizePricingPage";
 import IngredientsPage from "src/pages/nutriplan-module/mealPlanning/ingredients/IngredientsPage";
 import MealsPage from "src/pages/nutriplan-module/mealPlanning/meals/MealsPage";
 import MealsProfile from "src/pages/nutriplan-module/mealPlanning/meals/MealsProfile";
@@ -58,6 +59,10 @@ export const nutriPlanModulePages = [
   {
     path: "/nutriplan/mealPlanning/customizationOptions",
     element: <CustomizationOptionsPage />,
+  },
+  {
+    path: "/nutriplan/mealPlanning/customizePricing",
+    element: <CustomizePricingPage />,
   },
 
   //MealPlansPages MenusPage MenusProfile

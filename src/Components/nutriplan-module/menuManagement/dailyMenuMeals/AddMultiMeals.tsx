@@ -3,7 +3,6 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import { Grid, MenuItem } from "@mui/material";
 import { FieldArray, Form, Formik, FormikProps } from "formik";
-import moment from "moment";
 import React, { useEffect } from "react";
 import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
@@ -15,12 +14,16 @@ import { getValueBasedOnCurrentLanguage } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { useGetAllMealsQuery } from "src/pages/nutriplan-module/mealPlanning/meals/services/api";
 import { useGetAllMealPlansQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
+import { CUSTOMIZE_MENU_MACRO_OPTIONS } from "src/pages/nutriplan-module/menuManagement/dailyMenuMeals/customizeMenuHelpers";
 import { useCreateDailyMenuMultiMealsMutation } from "src/pages/nutriplan-module/menuManagement/dailyMenuMeals/services/api";
 import {
   IMeals,
   IMealsListDto,
 } from "src/types/modules/nutriplan/mealPlanning/meals";
-import { IMealPlansListDto } from "src/types/modules/nutriplan/mealPlans";
+import {
+  IMealPlansListDto,
+  isCustomizeMealPlanRow,
+} from "src/types/modules/nutriplan/mealPlans";
 import { IAddDailyMenuMealsMultiMealsDto } from "src/types/modules/nutriplan/menuManagement/dailyMenuMeals";
 import { dateFormatInBackendPayload } from "src/utilities/date.utility";
 import * as yup from "yup";
@@ -30,6 +33,21 @@ interface IProps {
   setShowAddModal: React.Dispatch<React.SetStateAction<boolean>>;
   dates: string[];
 }
+
+type MealPlanRow = IAddDailyMenuMealsMultiMealsDto["mealPlanIds"][number];
+
+const emptyMealPlanRow = (): MealPlanRow => ({
+  mealPlanId: "",
+  mealTypeIds: [],
+  mealPlan: null,
+  macroCategory: "",
+});
+
+const toApiMealPlanRow = (row: MealPlanRow) => ({
+  mealPlanId: row.mealPlanId,
+  mealPlan: row.mealPlan,
+  mealTypeIds: row.mealTypeIds,
+});
 
 const AddMultiMeals: React.FC<IProps> = (props) => {
   const { showAddModal, setShowAddModal, dates } = props;
@@ -48,6 +66,13 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
         mealTypeIds: yup
           .array()
           .min(1, String(messages["validation.required"])),
+        macroCategory: yup.string().when("mealPlan", {
+          is: (mealPlan: MealPlanRow["mealPlan"]) =>
+            isCustomizeMealPlanRow(mealPlan),
+          then: (schema) =>
+            schema.required(String(messages["validation.required"])),
+          otherwise: (schema) => schema.optional(),
+        }),
       })
     ),
   });
@@ -102,19 +127,38 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
         initialValues={{
           mealIds: [],
           dates: [],
-          mealPlanIds: [{ mealPlanId: "", mealTypeIds: [], mealPlan: null }],
+          mealPlanIds: [emptyMealPlanRow()],
           menuId: menuIdParams || "",
         }}
         validationSchema={validationSchema}
         innerRef={refForm}
         onSubmit={async (data) => {
-          data = {
-            ...data,
-            dates: data.dates.map((dateItem) =>
-              dateFormatInBackendPayload(dateItem)
-            ),
+          const formattedDates = data.dates.map((dateItem) =>
+            dateFormatInBackendPayload(dateItem)
+          );
+
+          const macrosFromCustomize = Array.from(
+            new Set(
+              (data.mealPlanIds || [])
+                .filter((row) => isCustomizeMealPlanRow(row.mealPlan))
+                .map((row) => row.macroCategory)
+                .filter((macro): macro is string => !!macro)
+            )
+          );
+
+          const payload: IAddDailyMenuMealsMultiMealsDto = {
+            mealIds: data.mealIds,
+            menuId: data.menuId,
+            dates: formattedDates,
+            mealPlanIds: (data.mealPlanIds || []).map(toApiMealPlanRow),
           };
-          await createMethod(data);
+
+          if (macrosFromCustomize.length > 0) {
+            payload.macroCategories = macrosFromCustomize;
+            payload.macroCategory = macrosFromCustomize[0];
+          }
+
+          await createMethod(payload);
         }}>
         {({ errors, setFieldValue, touched, values }) => {
           return (
@@ -152,7 +196,6 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                     name='dates'
                     labelId='common.date'
                     multiple
-                    //   multiple
                     label={messages["common.date"] as string}
                     error={Boolean(errors?.dates)}>
                     {dates.map((x, index) => (
@@ -177,11 +220,7 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                             <AppIconButton
                               label='common.add'
                               handleClick={() => {
-                                arrayHelpers.push({
-                                  mealPlanId: "",
-                                  mealTypeIds: [],
-                                  mealPlan: null,
-                                });
+                                arrayHelpers.push(emptyMealPlanRow());
                               }}
                               childComp={
                                 <AddCircleIcon
@@ -192,10 +231,22 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                             />
                           )}
                         </Grid>
-                        {values?.mealPlanIds?.map((item, index) => {
+                        {values?.mealPlanIds?.map((row, index) => {
+                          const isCustomize = isCustomizeMealPlanRow(
+                            row?.mealPlan
+                          );
+                          const planCol = isCustomize ? 4 : 5;
+                          const typeCol = isCustomize ? 4 : 5;
+
                           return (
-                            <Grid item container xs={12} spacing={4}>
-                              <Grid item xs={5}>
+                            <Grid
+                              item
+                              container
+                              xs={12}
+                              spacing={4}
+                              key={index}
+                              alignItems='flex-start'>
+                              <Grid item xs={12} md={planCol}>
                                 <AppBaseAutoComplete
                                   label='sidebar.mealPlans'
                                   isLoading={isFetchingMealPlans}
@@ -216,9 +267,16 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                                       `mealPlanIds[${index}].mealTypeIds`,
                                       []
                                     );
+                                    setFieldValue(
+                                      `mealPlanIds[${index}].macroCategory`,
+                                      isCustomizeMealPlanRow(value)
+                                        ? values.mealPlanIds[index]
+                                            ?.macroCategory || ""
+                                        : ""
+                                    );
                                     changePageMealPlans(1);
                                   }}
-                                  searchText={searchValueMeals}
+                                  searchText={searchValueMealPlans}
                                   onChangeTextField={(value) => {
                                     setSearchValueMealPlans(value.target.value);
                                     changePageMealPlans(1);
@@ -239,7 +297,7 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                                 />
                               </Grid>
 
-                              <Grid item xs={5}>
+                              <Grid item xs={12} md={typeCol}>
                                 <AppSelectField
                                   fullWidth
                                   disabled={
@@ -272,9 +330,45 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                                 </AppSelectField>
                               </Grid>
 
+                              {isCustomize && (
+                                <Grid item xs={12} md={2}>
+                                  <AppSelectField
+                                    fullWidth
+                                    size='small'
+                                    name={`mealPlanIds[${index}].macroCategory`}
+                                    labelId='dailyMenuMeals.macroCategory'
+                                    label={
+                                      (messages[
+                                        "dailyMenuMeals.macroCategory"
+                                      ] as string) || "Macro Category"
+                                    }
+                                    error={
+                                      errors?.mealPlanIds &&
+                                      (
+                                        (errors?.mealPlanIds as any)[
+                                          index
+                                        ] as any
+                                      )?.macroCategory
+                                    }>
+                                    {CUSTOMIZE_MENU_MACRO_OPTIONS.map(
+                                      (option) => (
+                                        <MenuItem
+                                          key={option.value}
+                                          value={option.value}>
+                                          {(messages[
+                                            option.labelKey
+                                          ] as string) || option.fallback}
+                                        </MenuItem>
+                                      )
+                                    )}
+                                  </AppSelectField>
+                                </Grid>
+                              )}
+
                               <Grid
                                 item
-                                xs={2}
+                                xs={12}
+                                md={2}
                                 container
                                 columnGap={2}
                                 alignItems={"center"}>
@@ -294,11 +388,7 @@ const AddMultiMeals: React.FC<IProps> = (props) => {
                                   <AppIconButton
                                     label='common.add'
                                     handleClick={() => {
-                                      arrayHelpers.push({
-                                        mealPlanId: "",
-                                        mealTypeIds: [],
-                                        mealPlan: null,
-                                      });
+                                      arrayHelpers.push(emptyMealPlanRow());
                                     }}
                                     childComp={
                                       <AddCircleIcon

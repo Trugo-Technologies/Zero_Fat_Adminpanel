@@ -12,7 +12,10 @@ import AddDataGridActivation from "src/Components/baseComponents/dataGrid/AddDat
 import AppDataGridCell from "src/Components/baseComponents/dataGrid/AppDataGridCell";
 import AppDataGridImage from "src/Components/baseComponents/dataGrid/AppDataGridImage";
 import AppIconButton from "src/Components/baseComponents/other/AppIconButton";
-import { IMealPlans } from "src/types/modules/nutriplan/mealPlans";
+import {
+  IMealPlans,
+  isCustomizeMealPlanRow,
+} from "src/types/modules/nutriplan/mealPlans";
 export const MealPlansColumns = (
   handleDetails = (row: IMealPlans) => {},
   handleUpdate = (row: IMealPlans) => {},
@@ -71,9 +74,12 @@ export const MealPlansColumns = (
       flex: 0.2,
       headerClassName: "super-app-theme--header",
 
-      renderCell: (params) => (
-        <AppDataGridCell value={params?.row?.carbPercentage} />
-      ),
+      renderCell: (params) =>
+        isCustomizeMealPlanRow(params.row) ? (
+          <AppDataGridCell value='—' />
+        ) : (
+          <AppDataGridCell value={params?.row?.carbPercentage} />
+        ),
     },
     {
       field: "proteinPercentage",
@@ -83,9 +89,18 @@ export const MealPlansColumns = (
       flex: 0.2,
       headerClassName: "super-app-theme--header",
 
-      renderCell: (params) => (
-        <AppDataGridCell value={params?.row?.proteinPercentage} />
-      ),
+      renderCell: (params) => {
+        if (!isCustomizeMealPlanRow(params.row)) {
+          return <AppDataGridCell value={params?.row?.proteinPercentage} />;
+        }
+        const proteinGrams =
+          params.row?.proteinGrams ?? params.row?.protein?.grams;
+        return (
+          <AppDataGridCell
+            value={proteinGrams != null ? `${proteinGrams}g` : "—"}
+          />
+        );
+      },
     },
     {
       field: "fatPercentage",
@@ -96,9 +111,25 @@ export const MealPlansColumns = (
       headerClassName: "super-app-theme--header",
       hideable: locale != "en-US",
 
-      renderCell: (params) => (
-        <AppDataGridCell value={params?.row?.fatPercentage} />
-      ),
+      renderCell: (params) => {
+        if (!isCustomizeMealPlanRow(params.row)) {
+          return <AppDataGridCell value={params?.row?.fatPercentage} />;
+        }
+        const carbsGrams = params.row?.carbsGrams ?? params.row?.carbs?.grams;
+        const fiberGrams = params.row?.fiberGrams ?? params.row?.fiber?.grams;
+        return (
+          <AppDataGridCell
+            value={
+              [
+                carbsGrams != null ? `C ${carbsGrams}g` : null,
+                fiberGrams != null ? `F ${fiberGrams}g` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"
+            }
+          />
+        );
+      },
     },
 
     {

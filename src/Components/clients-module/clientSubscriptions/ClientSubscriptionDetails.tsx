@@ -1,20 +1,89 @@
 /** @format */
 
-import { Chip, Divider, Grid } from "@mui/material";
+import {
+  Box,
+  Chip,
+  Divider,
+  FormControlLabel,
+  Grid,
+  Switch,
+  SwitchProps,
+  Typography,
+  Zoom,
+  styled,
+} from "@mui/material";
+import { useState } from "react";
 import { useIntl } from "react-intl";
 import { Fonts } from "src/@crema/constants/AppEnums";
+import IntlMessages from "src/@crema/helpers/IntlMessages";
 import PaymentStatusBadge from "src/Components/baseComponents/badge/PaymentStatusBadge";
 import PreferredDeliveryTimeBadge from "src/Components/baseComponents/badge/PreferredDeliveryTimeBadge";
 import SubscriptionBadge from "src/Components/baseComponents/badge/SubscriptionBadge";
 import SubscriptionTypeBadge from "src/Components/baseComponents/badge/SubscriptionTypeBadge";
 import BaseDetails from "src/Components/baseComponents/details/BaseDetails";
+import AppConfirmModal from "src/Components/baseComponents/modals/AppConfirmModal";
 import AppItemView from "src/Components/baseComponents/other/AppItemView";
+import { showSuccessToasts } from "src/Components/toasts";
 import { getValueBasedOnCurrentLanguage } from "src/Helpers";
-import { useGetClientSubscriptionQuery } from "src/pages/clients-module/clientSubscriptions/services/api";
+import {
+  useActivateClientSubscriptionMutation,
+  useGetClientSubscriptionQuery,
+} from "src/pages/clients-module/clientSubscriptions/services/api";
+import { subscriptionStatus } from "src/types/enums";
 import {
   IClientSubscriptions,
   ISelectedMealTypes,
 } from "src/types/modules/clientsManagement/clientSubscriptions";
+
+const ActivateSwitch = styled((props: SwitchProps) => (
+  <Switch focusVisibleClassName='.Mui-focusVisible' disableRipple {...props} />
+))(({ theme }) => ({
+  width: 38,
+  height: 15,
+  padding: 0,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  "& .MuiSwitch-switchBase": {
+    padding: 0,
+    margin: 2,
+    transitionDuration: "300ms",
+    "&.Mui-checked": {
+      transform: "translateX(23px)",
+      color: "#fff",
+      "& + .MuiSwitch-track": {
+        backgroundColor: theme.palette.mode === "dark" ? "" : "#65C466",
+        opacity: 1,
+        border: 0,
+      },
+      "&.Mui-disabled + .MuiSwitch-track": {
+        opacity: 0.5,
+      },
+    },
+    "&.Mui-disabled .MuiSwitch-thumb": {
+      color:
+        theme.palette.mode === "light"
+          ? theme.palette.grey[100]
+          : theme.palette.grey[600],
+    },
+    "&.Mui-disabled + .MuiSwitch-track": {
+      opacity: theme.palette.mode === "light" ? 0.7 : 0.3,
+    },
+  },
+  "& .MuiSwitch-thumb": {
+    boxSizing: "border-box",
+    width: 11,
+    height: 11,
+  },
+  "& .MuiSwitch-track": {
+    borderRadius: 26 / 2,
+    backgroundColor: theme.palette.mode === "light" ? "red" : "",
+    opacity: 1,
+    transition: theme.transitions.create(["background-color"], {
+      duration: 500,
+    }),
+  },
+}));
 
 interface IClientSubscriptionDetailsProps {
   setShowDetails: React.Dispatch<React.SetStateAction<boolean>>;
@@ -25,6 +94,7 @@ interface IClientSubscriptionDetailsProps {
 const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
   const { showDetails, setShowDetails, id } = props;
   const { locale, messages } = useIntl();
+  const [showActivateConfirm, setShowActivateConfirm] = useState(false);
 
   const { data: clientSubscriptionItem, isLoading: detailsLoading } =
     useGetClientSubscriptionQuery(
@@ -33,6 +103,13 @@ const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
         skip: !id,
       }
     );
+
+  const [activateSubscription, { isLoading: isActivating }] =
+    useActivateClientSubscriptionMutation();
+
+  const status = clientSubscriptionItem?.data?.subscriptionStatus;
+  const isActive = status === subscriptionStatus.Active;
+  const canActivateManually = !!id && !isActive;
 
   const daysOfWeek = [
     messages["common.days.Sunday"],
@@ -46,6 +123,20 @@ const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
 
   const getDayString = (dayNumber: number) => {
     return daysOfWeek[dayNumber];
+  };
+
+  const handleActivateConfirm = async () => {
+    if (!id) return;
+    try {
+      await activateSubscription(id).unwrap();
+      showSuccessToasts(
+        (messages["clientSubscriptions.activateSuccess"] as string) ||
+          "Subscription activated successfully"
+      );
+      setShowActivateConfirm(false);
+    } catch {
+      // Errors handled in mutation / toast
+    }
   };
 
   return (
@@ -234,6 +325,37 @@ const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
             column={3}
           />
 
+          <Grid item xs={3}>
+            <Typography sx={{ fontSize: 14, fontWeight: Fonts.SEMI_BOLD }}>
+              <IntlMessages id='clientSubscriptions.activateManually' />
+            </Typography>
+            <FormControlLabel
+              sx={{ m: 0 }}
+              control={
+                <ActivateSwitch
+                  name='activateSubscription'
+                  sx={{ m: 1 }}
+                  checked={isActive}
+                  disabled={!canActivateManually || isActivating}
+                  onChange={(event) => {
+                    if (event.target.checked && canActivateManually) {
+                      setShowActivateConfirm(true);
+                    }
+                  }}
+                />
+              }
+              label={
+                <Box sx={{ display: "flex", minWidth: 70 }}>
+                  <Zoom in={true}>
+                    <p style={{ marginInline: "5px" }}>
+                      <IntlMessages id='clientSubscriptions.activate' />
+                    </p>
+                  </Zoom>
+                </Box>
+              }
+            />
+          </Grid>
+
           <Grid item my={4} xs={12}>
             <Divider
               sx={{
@@ -241,7 +363,6 @@ const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
                 fontWeight: Fonts.SEMI_BOLD,
               }}
               variant='fullWidth'>
-              {/* <IntlMessages id='sidebar.workoutsExercises' /> */}
               <Chip
                 label={messages["sidebar.clientLocation"] as string}
                 size='medium'
@@ -250,7 +371,6 @@ const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
               />
             </Divider>
           </Grid>
-          {/* client location */}
           <AppItemView
             label='clientLocations.fullAddressAr'
             value={clientSubscriptionItem?.data?.clientLocation?.fullAddressAr}
@@ -288,6 +408,18 @@ const ClientSubscriptionDetails = (props: IClientSubscriptionDetailsProps) => {
           />
         </Grid>
       </BaseDetails>
+
+      {showActivateConfirm && (
+        <AppConfirmModal
+          dialogTitle='clientSubscriptions.activateTitle'
+          open={showActivateConfirm}
+          setOpen={setShowActivateConfirm}
+          loading={isActivating}
+          itemName={clientSubscriptionItem?.data?.client?.fullName || ""}
+          title='clientSubscriptions.activateContent'
+          onConfirm={handleActivateConfirm}
+        />
+      )}
     </>
   );
 };

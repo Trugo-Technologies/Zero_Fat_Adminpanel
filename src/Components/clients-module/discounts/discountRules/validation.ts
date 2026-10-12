@@ -1,6 +1,9 @@
 /** @format */
 import { MessageFormatElement } from "react-intl";
-import { Duration } from "src/types/modules/clientsManagement/discounts/discountRules";
+import {
+  DiscountOfferType,
+  Duration,
+} from "src/types/modules/clientsManagement/discounts/discountRules";
 import * as yup from "yup";
 
 const discountRulesValidationSchema = (
@@ -8,12 +11,29 @@ const discountRulesValidationSchema = (
 ) => {
   return yup.object({
     isPercent: yup.boolean(),
+    offerType: yup
+      .string()
+      .required(String(messages["validation.required"])),
     code: yup.string().required(String(messages["validation.required"])),
     duration: yup.string().required(String(messages["validation.required"])),
     startDate: yup.string().required(String(messages["validation.required"])),
     expirationDate: yup
       .string()
       .required(String(messages["validation.required"])),
+    bankId: yup
+      .string()
+      .nullable()
+      .when("offerType", {
+        is: DiscountOfferType.Bank,
+        then: () =>
+          yup
+            .string()
+            .nullable()
+            .required(String(messages["validation.required"])),
+        otherwise: () => yup.string().nullable().notRequired(),
+      }),
+    mealPlanId: yup.string().nullable().notRequired(),
+    subscriptionTypes: yup.array().of(yup.string()).notRequired(),
 
     amountOff: yup
       .number()

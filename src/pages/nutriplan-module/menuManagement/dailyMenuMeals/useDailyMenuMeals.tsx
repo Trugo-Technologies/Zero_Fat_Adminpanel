@@ -15,6 +15,7 @@ import {
 } from "./services/api";
 import AddDailyMenuMeals from "src/Components/nutriplan-module/menuManagement/dailyMenuMeals/AddDailyMenuMeals";
 import ExportDailyMenuMeals from "src/Components/nutriplan-module/menuManagement/dailyMenuMeals/ExportDailyMenuMeals";
+import { CustomizeMenuMacroType } from "./customizeMenuHelpers";
 
 const useDailyMenuMeals = ({
   date,
@@ -23,6 +24,7 @@ const useDailyMenuMeals = ({
   mealPlan,
   mealType,
   dates,
+  macroType,
 }: {
   date?: string;
   dates: string[];
@@ -30,6 +32,7 @@ const useDailyMenuMeals = ({
   mealPlanId?: string;
   mealPlan?: IMealPlans;
   mealType?: IMealTypes;
+  macroType?: CustomizeMenuMacroType;
 }) => {
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showAddMealsModal, setShowAddMealsModal] = useState<boolean>(false);
@@ -96,6 +99,7 @@ const useDailyMenuMeals = ({
           mealTypeId={mealTypeId!}
           mealPlan={mealPlan}
           mealType={mealType}
+          macroCategory={macroType}
         />
       )}
 
@@ -107,6 +111,7 @@ const useDailyMenuMeals = ({
           date={date}
           mealPlan={mealPlan}
           mealType={mealType}
+          macroCategory={macroType}
         />
       )}
       {/*

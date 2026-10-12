@@ -154,6 +154,36 @@ const RecipeDetails = (props: IRecipeDetailsProps) => {
                 />
 
                 <AppItemView
+                  label='recipes.heatingInstructionsAr'
+                  value={removeHTMLTags(
+                    recipeItem?.data?.heatingInstructionsAr! ?? ""
+                  )}
+                  column={6}
+                />
+                <AppItemView
+                  label='recipes.heatingInstructionsEn'
+                  value={removeHTMLTags(
+                    recipeItem?.data?.heatingInstructionsEn! ?? ""
+                  )}
+                  column={6}
+                />
+
+                <AppItemView
+                  label='recipes.servingInstructionsAr'
+                  value={removeHTMLTags(
+                    recipeItem?.data?.servingInstructionsAr! ?? ""
+                  )}
+                  column={6}
+                />
+                <AppItemView
+                  label='recipes.servingInstructionsEn'
+                  value={removeHTMLTags(
+                    recipeItem?.data?.servingInstructionsEn! ?? ""
+                  )}
+                  column={6}
+                />
+
+                <AppItemView
                   label='recipes.fullRecipeTextAr'
                   value={removeHTMLTags(
                     recipeItem?.data?.fullRecipeTextAr! ?? ""

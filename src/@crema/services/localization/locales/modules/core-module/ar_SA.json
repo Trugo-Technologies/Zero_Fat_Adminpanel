@@ -13,6 +13,7 @@
   "subscriptionPlans.subscriptionType.OneWeek": "اسبوع واحد",
   "subscriptionPlans.subscriptionType.OneMonth": "شهر واحد",
   "subscriptionPlans.subscriptionType.ThreeMonths": "ثلاثة أشهر",
+  "subscriptionPlans.subscriptionType.Custom": "مخصص",
   "subscriptionPlans.paymob": "paymob Id",
   "subscriptionPlans.paymentQuickLink": "رابط الدفع",
   "subscriptionPlans.minimumOrderValue": "الحد الأدنى لقيمة الطلب",

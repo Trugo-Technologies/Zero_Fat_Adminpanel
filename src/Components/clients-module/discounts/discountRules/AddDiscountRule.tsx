@@ -1,12 +1,15 @@
 /** @format */
 
 import { Formik, FormikProps } from "formik";
-import moment from "moment";
 import React from "react";
 import { useIntl } from "react-intl";
 import AppAddModal from "src/Components/baseComponents/modals/AppAddModal";
 import { useCreateDiscountRuleMutation } from "src/pages/clients-module/discounts/discountRules/services/api";
-import { ICreateDiscountRuleDto } from "src/types/modules/clientsManagement/discounts/discountRules";
+import {
+  DiscountOfferType,
+  ICreateDiscountRuleDto,
+  toDiscountRuleApiPayload,
+} from "src/types/modules/clientsManagement/discounts/discountRules";
 import { dateFormatInBackendPayload } from "src/utilities/date.utility";
 import DiscountRuleForm from "./DiscountRuleForm";
 import discountRulesValidationSchema from "./validation";
@@ -52,18 +55,22 @@ const AddDiscountRule: React.FC<IProps> = (props) => {
           expirationDate: "",
           durationInMonths: null,
           firstTimeClientsOnly: false,
-
+          addToOffers: false,
           isActive: true,
           maxRedemptions: null,
           maxRedemptionsPerClient: null,
           percentOff: null,
           startDate: "",
           isPercent: true,
+          offerType: DiscountOfferType.PromoCode,
+          bankId: "",
+          mealPlanId: "",
+          subscriptionTypes: [],
         }}
         validationSchema={discountRulesValidationSchema(messages)}
         innerRef={refForm}
         onSubmit={(data) => {
-          data = {
+          const payload = toDiscountRuleApiPayload({
             ...data,
             startDate: data?.startDate
               ? dateFormatInBackendPayload(data?.startDate)
@@ -78,8 +85,8 @@ const AddDiscountRule: React.FC<IProps> = (props) => {
             maxRedemptionsPerClient: data?.maxRedemptionsPerClient
               ? data?.maxRedemptionsPerClient
               : 0,
-          };
-          createDiscountRuleMethod(data);
+          });
+          createDiscountRuleMethod(payload);
         }}>
         <DiscountRuleForm />
       </Formik>

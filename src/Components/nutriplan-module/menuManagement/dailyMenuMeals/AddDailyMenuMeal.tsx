@@ -29,6 +29,8 @@ interface IAddDailyMenuMealProps {
   mealPlanId: string;
   mealPlan?: IMealPlans;
   mealType?: IMealTypes;
+  /** Protein | Carbs | Fiber for Customize plan sections. */
+  macroCategory?: string;
   onSuccess?: () => void;
   onFailed?: () => void;
 }
@@ -43,6 +45,7 @@ const AddDailyMenuMeal: React.FC<IAddDailyMenuMealProps> = (props) => {
     mealPlanId,
     mealPlan,
     mealType,
+    macroCategory,
   } = props;
   const { menuIdParams } = useParams();
 
@@ -128,10 +131,16 @@ const AddDailyMenuMeal: React.FC<IAddDailyMenuMealProps> = (props) => {
           menuId: menuIdParams || "",
           mealId: "",
           isDefault: false,
+          ...(macroCategory ? { macroCategory } : {}),
         }}
         validationSchema={validationSchema}
         innerRef={refForm}
-        onSubmit={addDailyMenuMealMethod}>
+        onSubmit={(data) =>
+          addDailyMenuMealMethod({
+            ...data,
+            ...(macroCategory ? { macroCategory } : {}),
+          })
+        }>
         {({ errors, values, setFieldValue, touched }) => (
           <Form>
             <Grid container spacing={4}>

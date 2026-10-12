@@ -1,11 +1,16 @@
 /** @format */
 
 import { Grid } from "@mui/material";
+import { useIntl } from "react-intl";
 import DurationBadge from "src/Components/baseComponents/badge/DurationBadge";
 import BaseDetails from "src/Components/baseComponents/details/BaseDetails";
 import AppItemView from "src/Components/baseComponents/other/AppItemView";
 import { useGetDiscountRuleByIdQuery } from "src/pages/clients-module/discounts/discountRules/services/api";
-import { IDiscountRule } from "src/types/modules/clientsManagement/discounts/discountRules";
+import { useGetActiveMealPlansQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
+import {
+  DISCOUNT_SUBSCRIPTION_TYPE_OPTIONS,
+  IDiscountRule,
+} from "src/types/modules/clientsManagement/discounts/discountRules";
 
 interface IProps {
   setShowDetails: React.Dispatch<React.SetStateAction<boolean>>;
@@ -15,6 +20,7 @@ interface IProps {
 
 const DiscountRuleDetails = (props: IProps) => {
   const { showDetails, setShowDetails, id } = props;
+  const { messages, locale } = useIntl();
   const {
     data: itemById,
     isLoading,
@@ -25,6 +31,51 @@ const DiscountRuleDetails = (props: IProps) => {
       skip: !id,
     }
   );
+  const { data: mealPlansResponse } = useGetActiveMealPlansQuery();
+
+  const t = (key: string, fallback: string) =>
+    (messages[key] as string) || fallback;
+
+  const mealPlanName = (() => {
+    const mealPlanId = itemById?.data?.mealPlanId;
+    if (!mealPlanId) return "-";
+    const plan = (mealPlansResponse?.data || []).find(
+      (p) => p.id === mealPlanId
+    );
+    if (!plan) return mealPlanId;
+    return locale === "en-US" ? plan.nameEn : plan.nameAr;
+  })();
+
+  const bankName = (() => {
+    const data = itemById?.data;
+    if (!data?.bankId) return "-";
+    if (locale === "en-US") {
+      return data.bankNameEn || data.bankId;
+    }
+    return data.bankNameAr || data.bankNameEn || data.bankId;
+  })();
+
+  const subscriptionTypesLabel = (() => {
+    const types = itemById?.data?.subscriptionTypes || [];
+    if (!types.length) {
+      return t("discountRules.subscriptionTypes.all", "All subscription types");
+    }
+    return types
+      .map((type) => {
+        const opt = DISCOUNT_SUBSCRIPTION_TYPE_OPTIONS.find(
+          (o) => o.value === type
+        );
+        return opt ? t(opt.labelKey, type) : type;
+      })
+      .join(", ");
+  })();
+
+  const offerTypeLabel = itemById?.data?.offerType
+    ? t(
+        `discountRules.offerType.${itemById.data.offerType}`,
+        String(itemById.data.offerType)
+      )
+    : "-";
 
   return (
     <BaseDetails
@@ -39,9 +90,29 @@ const DiscountRuleDetails = (props: IProps) => {
       columns={12}>
       <Grid container spacing={5} item xs={12}>
         <AppItemView
+          label='discountRules.offerType'
+          value={offerTypeLabel}
+          column={6}
+        />
+        <AppItemView
           label='discountRules.code'
           value={itemById?.data?.code}
           column={6}
+        />
+        <AppItemView
+          label='discountRules.bank'
+          value={bankName}
+          column={6}
+        />
+        <AppItemView
+          label='discountRules.mealPlan'
+          value={mealPlanName}
+          column={6}
+        />
+        <AppItemView
+          label='discountRules.subscriptionTypes'
+          value={subscriptionTypesLabel}
+          column={12}
         />
         <AppItemView
           label='common.startDate'
@@ -79,6 +150,13 @@ const DiscountRuleDetails = (props: IProps) => {
         <AppItemView
           label='discountRules.firstTimeClientsOnly'
           value={itemById?.data?.firstTimeClientsOnly}
+          column={6}
+          type='isExist'
+        />
+
+        <AppItemView
+          label='discountRules.addToOffers'
+          value={!!itemById?.data?.addToOffers}
           column={6}
           type='isExist'
         />

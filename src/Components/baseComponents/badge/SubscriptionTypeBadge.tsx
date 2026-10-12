@@ -23,6 +23,10 @@ const SubscriptionTypeBadge: React.FC<ISubscriptionTypeBadgeProps> = (
         return {
           color: "#c91c1cbd",
         };
+      case subscriptionType.Custom:
+        return {
+          color: "#475569",
+        };
       default:
         return {
           color: "#000",

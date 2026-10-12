@@ -44,6 +44,38 @@ function discountRulesColumns(
       renderCell: (params) => <AppDataGridCell value={params.row?.code} />,
     },
     {
+      field: "offerType",
+      headerName: messages["discountRules.offerType"] as string,
+      headerAlign: "center",
+      align: "center",
+      flex: 0.2,
+      headerClassName: "super-app-theme--header",
+      renderCell: (params) => (
+        <AppDataGridCell
+          value={
+            params.row?.offerType
+              ? ((messages[
+                  `discountRules.offerType.${params.row.offerType}`
+                ] as string) || params.row.offerType)
+              : "-"
+          }
+        />
+      ),
+    },
+    {
+      field: "bankNameEn",
+      headerName: messages["discountRules.bank"] as string,
+      headerAlign: "center",
+      align: "center",
+      flex: 0.2,
+      headerClassName: "super-app-theme--header",
+      renderCell: (params) => (
+        <AppDataGridCell
+          value={params.row?.bankNameEn || params.row?.bankNameAr || "-"}
+        />
+      ),
+    },
+    {
       field: "percentOff",
       headerName: messages["discountRules.percentOff"] as string,
       headerAlign: "center",
@@ -156,6 +188,24 @@ function discountRulesColumns(
       renderCell: (params) => (
         <>
           {params?.row?.firstTimeClientsOnly ? (
+            <CheckIcon color='success' />
+          ) : (
+            <CloseIcon color='error' />
+          )}
+        </>
+      ),
+    },
+
+    {
+      field: "addToOffers",
+      headerName: messages["discountRules.addToOffers"] as string,
+      headerAlign: "center",
+      align: "center",
+      flex: 0.2,
+      headerClassName: "super-app-theme--header",
+      renderCell: (params) => (
+        <>
+          {params?.row?.addToOffers ? (
             <CheckIcon color='success' />
           ) : (
             <CloseIcon color='error' />

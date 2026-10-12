@@ -21,9 +21,11 @@ import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
 import {
   ALL_DURATIONS,
+  ALL_OFFER_TYPES,
   ALL_STATUS,
   DURATION_OPTIONS,
   DiscountRuleAppliedFilters,
+  OFFER_TYPE_OPTIONS,
   buildDiscountRuleFilterQueryParams,
   createDefaultDiscountRuleFilters,
   dateInputSx,
@@ -100,6 +102,7 @@ function DiscountRulesPage() {
         expirationDateFrom,
         expirationDateTo,
         duration,
+        offerType,
         isActive,
         startDate,
         endDate,
@@ -182,6 +185,28 @@ function DiscountRulesPage() {
           {messages["common.all"] as string}
         </MenuItem>
         {DURATION_OPTIONS.map(({ value, labelKey }) => (
+          <MenuItem key={value} value={value} sx={{ fontSize: 13 }}>
+            {messages[labelKey] as string}
+          </MenuItem>
+        ))}
+      </Select>
+    </Box>,
+    <Box key="offerType">
+      <Typography
+        sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", mb: 1 }}
+      >
+        {messages["discountRules.offerType"] as string}
+      </Typography>
+      <Select
+        size="small"
+        value={appliedFilters.offerType}
+        onChange={(e) => updateFilter("offerType", e.target.value)}
+        sx={{ ...selectSx, minWidth: 160 }}
+      >
+        <MenuItem value={ALL_OFFER_TYPES} sx={{ fontSize: 13 }}>
+          {messages["common.all"] as string}
+        </MenuItem>
+        {OFFER_TYPE_OPTIONS.map(({ value, labelKey }) => (
           <MenuItem key={value} value={value} sx={{ fontSize: 13 }}>
             {messages[labelKey] as string}
           </MenuItem>

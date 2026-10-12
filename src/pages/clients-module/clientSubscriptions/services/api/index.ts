@@ -40,11 +40,40 @@ const apiService = api
       }),
 
       getClientSubscription: query<IClientSubscriptionsDetails, ArgsType>({
+        providesTags: (_result, _error, arg) => [
+          { type: "clientSubscriptions", id: arg.id },
+          "clientSubscriptions",
+        ],
         query: ({ id }) => ({
           url: `${endPoints.clientSubscriptionsEndpoint().pathname}/${id}`,
           method: "GET",
         }),
         keepUnusedDataFor: 0,
+      }),
+
+      activateClientSubscription: mutation<void, string>({
+        invalidatesTags: (_result, _error, id) => [
+          { type: "clientSubscriptions", id },
+          "clientSubscriptions",
+        ],
+        query: (id) => ({
+          url: `${endPoints.clientSubscriptionsEndpoint().pathname}/${id}/activate`,
+          method: "POST",
+        }),
+        async onQueryStarted(_id, { queryFulfilled }) {
+          try {
+            await queryFulfilled;
+          } catch (error) {
+            const errorResponse = error as {
+              error?: { data?: { errors?: string[] }; response?: { data?: { errors?: string[] } } };
+            };
+            const message =
+              errorResponse?.error?.data?.errors?.join(", ") ||
+              errorResponse?.error?.response?.data?.errors?.join(", ") ||
+              "";
+            if (message) showErrorToasts(message);
+          }
+        },
       }),
 
       exportClientSubscriptions: mutation<void, ExportClientSubscriptionsArgs>({
@@ -84,5 +113,6 @@ const apiService = api
 export const {
   useGetAllClientSubscriptionsQuery,
   useGetClientSubscriptionQuery,
+  useActivateClientSubscriptionMutation,
   useExportClientSubscriptionsMutation,
 } = apiService;

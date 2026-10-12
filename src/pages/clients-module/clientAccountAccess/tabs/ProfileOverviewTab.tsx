@@ -43,6 +43,7 @@ import ProfileInfoCard from "../components/profile/ProfileInfoCard";
 import WeightProgress from "../components/profile/WeightProgress";
 import { canRenewSubscription, getSubscriptionStatusChipColor } from "../mapClientAccountData";
 import { useStartSubscriptionWizardMutation } from "../services/api";
+import { showErrorToasts } from "src/Components/toasts";
 import { ClientAccountData } from "../types";
 
 type Props = {
@@ -109,7 +110,9 @@ const ProfileOverviewTab = ({
         wizardMode,
       }).unwrap();
 
-      const draftId = response?.data?.id;
+      const draftId =
+        response?.data?.id ||
+        (response?.data as { draftId?: string } | undefined)?.draftId;
       const params = new URLSearchParams({
         clientId,
         wizardMode,
@@ -117,6 +120,9 @@ const ProfileOverviewTab = ({
 
       if (draftId) {
         params.set("draftId", draftId);
+      } else {
+        showErrorToasts("Failed to start subscription wizard (no draft id)");
+        return;
       }
 
       navigate(`/clientsManagement/createSubscription?${params.toString()}`);

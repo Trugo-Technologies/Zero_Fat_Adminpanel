@@ -192,6 +192,10 @@ const AddRecipes = () => {
                     suitableForFreezing: false,
                     preparationMethodAr: "",
                     preparationMethodEn: "",
+                    heatingInstructionsAr: "",
+                    heatingInstructionsEn: "",
+                    servingInstructionsAr: "",
+                    servingInstructionsEn: "",
                   }}
                   validationSchema={validationSchema}
                   innerRef={refForm}
@@ -726,6 +730,32 @@ const AddRecipes = () => {
                           <AppFreeEditor
                             name='preparationMethodEn'
                             label='recipes.preparationMethodEn'
+                          />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='heatingInstructionsAr'
+                            label='recipes.heatingInstructionsAr'
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='heatingInstructionsEn'
+                            label='recipes.heatingInstructionsEn'
+                          />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='servingInstructionsAr'
+                            label='recipes.servingInstructionsAr'
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='servingInstructionsEn'
+                            label='recipes.servingInstructionsEn'
                           />
                         </Grid>
 

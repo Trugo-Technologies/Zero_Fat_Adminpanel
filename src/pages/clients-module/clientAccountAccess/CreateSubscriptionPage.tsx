@@ -23,10 +23,18 @@ import {
   buildSchedulePayload,
   mapSubscriptionWizardDraftToFormState,
 } from "./mapSubscriptionWizardDraft";
-import { ISubscriptionWizardMealTypeSelection, SubscriptionWizardPaymentProvider } from "src/types/modules/clientsManagement/clientAccountAccess";
+import { ISubscriptionWizardMealTypeSelection, ICustomMealInstance, SubscriptionWizardPaymentProvider } from "src/types/modules/clientsManagement/clientAccountAccess";
 import { PreferredDeliveryTime } from "src/types/modules/clientsManagement/clientSubscriptions";
 import { useGetActiveMealPlansQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
-import { getMealTypeSelectionsTotalCalories } from "./mealPlanHelpers";
+import {
+  mapCustomMealsToSelectionRows,
+  getCustomMealsTotalCarbs,
+  getCustomMealsTotalFiber,
+  getCustomMealsTotalProtein,
+  getCustomMealsValidationMessage,
+  getMealTypeSelectionsTotalCalories,
+  isCustomizePlan,
+} from "./mealPlanHelpers";
 import { showErrorToasts, showSuccessToasts } from "src/Components/toasts";
 import { RenewalStrategyUi } from "./mapSubscriptionWizardDraft";
 import { DEFAULT_SELECTED_WEEKDAYS, getFirstAvailableDeliveryDate, getMinDeliveryDatesForDuration } from "./subscriptionWizardSchedule";
@@ -41,11 +49,15 @@ const CreateSubscriptionPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const draftId = searchParams.get("draftId");
-  const { data: wizardDraftResponse, isLoading: isWizardDraftLoading } =
-    useGetSubscriptionWizardDraftQuery(
-      { draftId: draftId || "" },
-      { skip: !draftId }
-    );
+  const {
+    data: wizardDraftResponse,
+    isLoading: isWizardDraftLoading,
+    isError: isWizardDraftError,
+    error: wizardDraftError,
+  } = useGetSubscriptionWizardDraftQuery(
+    { draftId: draftId || "" },
+    { skip: !draftId }
+  );
   const clientId =
     searchParams.get("clientId") ||
     wizardDraftResponse?.data?.clientId ||
@@ -101,6 +113,9 @@ const CreateSubscriptionPage = () => {
   const [mealTypeSelections, setMealTypeSelections] = useState<
     ISubscriptionWizardMealTypeSelection[]
   >([]);
+  const [customMealInstances, setCustomMealInstances] = useState<
+    ICustomMealInstance[]
+  >([]);
 
   // Step 2
   const [duration, setDuration] = useState("1 Month");
@@ -155,6 +170,7 @@ const CreateSubscriptionPage = () => {
     setScheduledStartDate(mapped.scheduledStartDate);
     setSelectedPlan(mapped.selectedPlan);
     setMealTypeSelections(mapped.mealTypeSelections);
+    setCustomMealInstances([]);
     setEnableAddons(mapped.enableAddons);
     setCart(mapped.cart);
     setDuration(mapped.duration);
@@ -236,12 +252,62 @@ const CreateSubscriptionPage = () => {
 
   const handleConfigurationNext = async () => {
     if (!draftId) {
-      handleNext();
+      showErrorToasts(
+        "Subscription draft is missing. Go back and start Create Subscription again."
+      );
+      return;
+    }
+
+    if (isWizardDraftError || !wizardDraftResponse?.data) {
+      showErrorToasts(
+        "Subscription wizard draft not found. Go back and start Create Subscription again."
+      );
       return;
     }
 
     if (!selectedPlan) {
       showErrorToasts("Please select a meal plan");
+      return;
+    }
+
+    const customizeMode = isCustomizePlan(
+      selectedPlan,
+      mealPlansResponse?.data ?? []
+    );
+
+    if (customizeMode) {
+      const customizeError = getCustomMealsValidationMessage(
+        customMealInstances
+      );
+      if (customizeError) {
+        showErrorToasts(customizeError);
+        return;
+      }
+
+      // Grouped by meal type with quantityPerDay + macroInstances
+      const selections = mapCustomMealsToSelectionRows(customMealInstances);
+      const proteinGrams = getCustomMealsTotalProtein(customMealInstances);
+      const carbsGrams = getCustomMealsTotalCarbs(customMealInstances);
+      const fiberGrams = getCustomMealsTotalFiber(customMealInstances);
+
+      try {
+        await updateConfiguration({
+          draftId,
+          data: buildConfigurationPayload(draftId, {
+            selectedPlan,
+            calorieTarget: 0,
+            proteinTargetG: proteinGrams,
+            proteinGrams,
+            carbsGrams,
+            fiberGrams,
+            mealTypeSelections: selections,
+            cart,
+          }),
+        }).unwrap();
+        handleNext();
+      } catch {
+        // Errors are handled in the mutation.
+      }
       return;
     }
 
@@ -414,6 +480,8 @@ const CreateSubscriptionPage = () => {
             setSelectedPlan={setSelectedPlan}
             mealTypeSelections={mealTypeSelections}
             setMealTypeSelections={setMealTypeSelections}
+            customMealInstances={customMealInstances}
+            setCustomMealInstances={setCustomMealInstances}
             enableAddons={enableAddons}
             setEnableAddons={setEnableAddons}
             addonTab={addonTab}
@@ -485,11 +553,51 @@ const CreateSubscriptionPage = () => {
     }
   };
 
+  const draftNotFound =
+    !!draftId && !isWizardDraftLoading && (isWizardDraftError || !wizardDraftResponse?.data);
+
+  const draftErrorMessage = useMemo(() => {
+    if (!draftNotFound) return "";
+    const apiError = wizardDraftError as {
+      data?: { title?: string; detail?: string };
+      error?: { response?: { data?: { title?: string } } };
+    };
+    return (
+      apiError?.data?.title ||
+      apiError?.error?.response?.data?.title ||
+      "Subscription wizard draft not found"
+    );
+  }, [draftNotFound, wizardDraftError]);
+
   return (
     <Box sx={{ width: "100%" }}>
       {draftId && isWizardDraftLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
           <CircularProgress />
+        </Box>
+      ) : draftNotFound ? (
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#0F172A", mb: 1 }}>
+            {draftErrorMessage}
+          </Typography>
+          <Typography sx={{ color: "text.secondary", fontSize: 14, mb: 3 }}>
+            This draft may have expired or was already completed. Start Create
+            Subscription again from the client profile.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (clientId) params.set("clientId", clientId);
+              navigate(
+                `/clientsManagement/clientAccountAccess${
+                  params.toString() ? `?${params.toString()}` : ""
+                }`
+              );
+            }}
+          >
+            Back to Client Account
+          </Button>
         </Box>
       ) : (
         <>

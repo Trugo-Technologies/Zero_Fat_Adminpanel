@@ -21,6 +21,8 @@ export interface ICreateDailyMenuMealsDto {
   menuId: string;
   mealId: string;
   isDefault: boolean;
+  /** Required for Customize meal plan (Protein | Carbs | Fiber). */
+  macroCategory?: string;
   // image: string;
 }
 
@@ -30,6 +32,8 @@ export interface ICreateDailyMenuMealsMultiDto {
   mealPlanId: string;
   mealTypeId: string;
   date: string;
+  /** Required for Customize meal plan (Protein | Carbs | Fiber). */
+  macroCategory?: string;
 }
 
 export interface IExportDailyMenuMealsDto
@@ -43,7 +47,13 @@ export interface IAddDailyMenuMealsMultiMealsDto {
     mealPlanId: string;
     mealPlan: IMealPlans | null;
     mealTypeIds: string[];
+    /** UI-only for Customize rows; collected into macroCategories on submit. */
+    macroCategory?: string;
   }>;
+  /** New API: list of macros for Customize plans. */
+  macroCategories?: string[];
+  /** Legacy / still accepted single macro. */
+  macroCategory?: string;
 }
 
 export interface IUpdateDailyMenuMealsDto

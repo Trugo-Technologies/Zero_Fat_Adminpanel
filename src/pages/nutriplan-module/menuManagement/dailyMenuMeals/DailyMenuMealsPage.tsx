@@ -1,8 +1,6 @@
 /** @format */
 
-import { Card, CardContent, Grid } from "@mui/material";
-import { GridRowSelectionModel } from "@mui/x-data-grid";
-import moment from "moment";
+import { Box, Card, CardContent, Grid } from "@mui/material";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import AppDataGrid from "src/Components/baseComponents/dataGrid/AppDataGrid";
@@ -14,6 +12,7 @@ import { IMealPlans } from "src/types/modules/nutriplan/mealPlans";
 import { IMealTypes } from "src/types/modules/nutriplan/mealTypes";
 import { IDailyMenuMealsListDto } from "src/types/modules/nutriplan/menuManagement/dailyMenuMeals";
 import { dateFormatInBackendPayload } from "src/utilities/date.utility";
+import { CustomizeMenuMacroType } from "./customizeMenuHelpers";
 import { useGetAllDailyMenuMealsQuery } from "./services/api";
 import useDailyMenuMeals from "./useDailyMenuMeals";
 
@@ -24,10 +23,22 @@ interface IDailyMenuMealsProps {
   mealPlanId?: string;
   mealPlan?: IMealPlans;
   mealType?: IMealTypes;
+  /** Present for Customize plan sections (UI-only until API supports it). */
+  macroType?: CustomizeMenuMacroType;
+  isCustomizeSection?: boolean;
 }
 
 const DailyMenuMealsPage: React.FC<IDailyMenuMealsProps> = (props) => {
-  const { date, mealPlanId, mealTypeId, mealPlan, mealType, dates } = props;
+  const {
+    date,
+    mealPlanId,
+    mealTypeId,
+    mealPlan,
+    mealType,
+    dates,
+    macroType,
+    isCustomizeSection = false,
+  } = props;
   const { menuIdParams } = useParams();
 
   const {
@@ -45,6 +56,7 @@ const DailyMenuMealsPage: React.FC<IDailyMenuMealsProps> = (props) => {
     mealPlan,
     mealType,
     dates,
+    macroType,
   });
 
   const {
@@ -65,16 +77,15 @@ const DailyMenuMealsPage: React.FC<IDailyMenuMealsProps> = (props) => {
       skip: !(date && mealPlanId && mealTypeId),
     },
     {
-      // moment(date, "DD/MM/YYYY").format("YYYY-MM-DDTHH:mm:ss.SSS[Z]")
       date: date ? dateFormatInBackendPayload(date) : "",
       mealPlanId,
       mealTypeId,
       menuId: menuIdParams,
+      ...(macroType ? { macroCategory: macroType } : {}),
     }
   );
 
   useEffect(() => {
-    // moment(date, "DD/MM/YYYY").format("YYYY-MM-DDTHH:mm:ss.SSS[Z]")
     const formattedDate = date ? dateFormatInBackendPayload(date) : "";
 
     setParameter({
@@ -82,70 +93,74 @@ const DailyMenuMealsPage: React.FC<IDailyMenuMealsProps> = (props) => {
       date: formattedDate,
       mealPlanId,
       mealTypeId,
+      ...(macroType ? { macroCategory: macroType } : {}),
     });
-  }, [date, mealPlanId, mealTypeId]);
+  }, [date, mealPlanId, mealTypeId, macroType]);
+
+  const content = (
+    <Grid container spacing={2}>
+      <Grid item xs={12}>
+        <AppFilters
+          addTitle='dailyMenuMeals.add'
+          setShowAddModal={setShowAddModal}
+          onChangeKeywordValue={(
+            event: React.ChangeEvent<HTMLInputElement>
+          ) => {
+            setSearchValue(event.target.value);
+          }}
+          setShowAddSecondModal={setShowAddMealsModal}
+          showAddSecondButton
+          addSecondTitle='dailyMenuMealsMulti.add'
+          successUrl={`${endPoints.dailyMenuMeals().pathname}/search`}
+          selectionModel={selectionModel as string[]}
+          setSelectionModel={setSelectionModel}
+          refetch={refetch}
+          onClickMultipleExport={
+            isCustomizeSection ? undefined : onClickMultipleExport
+          }
+        />
+      </Grid>
+      <Grid item xs={12} mt={isCustomizeSection ? 2 : 6}>
+        <AppDataGrid
+          rowCount={totalRecords ?? 0}
+          pageNumber={page ?? 0}
+          getRowId={(row) => row.mealId || row.id}
+          tableName={
+            macroType ? `dailyMenuMeals-${macroType}` : "dailyMenuMeals"
+          }
+          onPageSizeChange={(pageSize: number) => {
+            changeLimit(`${pageSize}`);
+          }}
+          onPageChange={(pageNumber: number) => {
+            changePage(pageNumber + 1);
+          }}
+          pageSize={limit ?? 10}
+          columns={columns}
+          rows={data?.data ?? []}
+          loading={isFetching}
+          onSelectionModelChange={setSelectionModel}
+          initialState={initialDataGridState}
+          checkboxSelection={!isCustomizeSection}
+          selectionModel={selectionModel}
+          onSortModelChange={() => {}}
+        />
+      </Grid>
+    </Grid>
+  );
 
   return (
     <>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Grid item xs={12}>
-                <AppFilters
-                  addTitle='dailyMenuMeals.add'
-                  setShowAddModal={setShowAddModal}
-                  onChangeKeywordValue={(
-                    event: React.ChangeEvent<HTMLInputElement>
-                  ) => {
-                    setSearchValue(event.target.value);
-                  }}
-                  setShowAddSecondModal={setShowAddMealsModal}
-                  showAddSecondButton={true}
-                  addSecondTitle='dailyMenuMealsMulti.add'
-                  successUrl={`${endPoints.dailyMenuMeals().pathname}/search`}
-                  selectionModel={selectionModel as string[]}
-                  setSelectionModel={setSelectionModel}
-                  refetch={refetch}
-                  onClickMultipleExport={onClickMultipleExport}
-                />
-              </Grid>
-              <Grid item xs={12} mt={6}>
-                <AppDataGrid
-                  rowCount={totalRecords ?? 0}
-                  pageNumber={page ?? 0}
-                  getRowId={(row) => row.mealId} // 💥 This is the missing piece
-                  tableName='dailyMenuMeals'
-                  //for pagination
-                  onPageSizeChange={(pageSize: number) => {
-                    changeLimit(`${pageSize}`);
-                  }}
-                  onPageChange={(pageNumber: number) => {
-                    changePage(pageNumber + 1);
-                  }}
-                  pageSize={limit ?? 10}
-                  columns={columns}
-                  rows={data?.data ?? []}
-                  loading={isFetching}
-                  //for selection
-                  onSelectionModelChange={setSelectionModel}
-                  initialState={initialDataGridState}
-                  checkboxSelection={true}
-                  selectionModel={selectionModel}
-                  //for sorting
-                  onSortModelChange={(result: string[] | null) => {
-                    // setSearch({
-                    //   ...search,
-                    //   orderBy: result,
-                    // });
-                  }}
-                />
-              </Grid>
-            </CardContent>
-          </Card>
+      {isCustomizeSection ? (
+        <Box>{content}</Box>
+      ) : (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>{content}</CardContent>
+            </Card>
+          </Grid>
         </Grid>
-      </Grid>
-
+      )}
       {Modals}
     </>
   );

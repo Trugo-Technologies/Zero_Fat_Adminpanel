@@ -16,6 +16,7 @@ import {
   GridToolbarContainer,
   GridToolbarDensitySelector,
 } from "@mui/x-data-grid";
+import { Box } from "@mui/material";
 import * as React from "react";
 import { useIntl } from "react-intl";
 
@@ -137,7 +138,8 @@ const AppDataGrid: React.FC<IAppDataGridProps> = (props) => {
   };
 
   return (
-    <DataGrid
+    <Box sx={{ width: "100%", minWidth: 0 }}>
+      <DataGrid
       rowCount={rowCount}
       //edit row
       editMode={editMode}
@@ -170,6 +172,7 @@ const AppDataGrid: React.FC<IAppDataGridProps> = (props) => {
       rowSelectionModel={selectionModel}
       keepNonExistentRowsSelected={keepNonExistentRowsSelected}
       sx={{
+        width: "100%",
         borderWidth: "0px !important",
 
         "& .MuiDataGrid-root": {
@@ -230,6 +233,7 @@ const AppDataGrid: React.FC<IAppDataGridProps> = (props) => {
       rows={rows}
       loading={loading}
     />
+    </Box>
   );
 };
 

@@ -34,6 +34,9 @@ export const endPoints = {
   clientLoyaltyPoints: getEndPoint("clientPortal-module/clientLoyaltyPoints"),
   clientGoals: getEndPoint("clientPortal-module/clientGoals"),
   discountRules: getEndPoint("clientPortal-module/DiscountRules"),
+  challenges: getEndPoint("clientPortal-module/Challenges"),
+  banks: getEndPoint("clientPortal-module/Banks"),
+  homeBanners: getEndPoint("clientPortal-module/HomeBanners"),
 
   kitchenOrderedMeal: getEndPoint("clientPortal-module/kitchen/ordered-meal"),
 
@@ -59,6 +62,7 @@ export const endPoints = {
   recipes: getEndPoint("nutriplan-module/recipes"),
 
   mealPlans: getEndPoint("nutriplan-module/mealPlans"),
+  customizePricingTiers: getEndPoint("nutriplan-module/CustomizePricingTiers"),
   trainerEndpoint: getEndPoint("/workout-module/Trainers"),
   planGoalsEndpoint: getEndPoint("/workout-module/PlanGoals"),
   ///configuration

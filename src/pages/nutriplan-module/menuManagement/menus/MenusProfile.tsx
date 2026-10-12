@@ -21,18 +21,21 @@ import IntlMessages from "src/@crema/helpers/IntlMessages";
 import { Fonts } from "src/@crema/constants/AppEnums";
 import moment from "moment";
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TabContext, TabList } from "@mui/lab";
 import LoadingAndErrorWrapper from "src/Components/baseComponents/other/LoadingAndErrorWrapper";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import {
   IMealPlans,
   IMealPlansListDto,
+  isCustomizeMealPlanRow,
 } from "src/types/modules/nutriplan/mealPlans";
 import { useGetAllMealPlansQuery } from "../../mealPlans/services/api";
 import AppBaseAutoComplete from "src/Components/baseComponents/inputs/autoComplete/AppBaseAutoComplete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DailyMenuMealsPage from "../dailyMenuMeals/DailyMenuMealsPage";
+import CustomizeMealTypeMealsPanel from "../dailyMenuMeals/CustomizeMealTypeMealsPanel";
+import { isCustomizeMealPlan } from "../dailyMenuMeals/customizeMenuHelpers";
 import AddMultiMeals from "src/Components/nutriplan-module/menuManagement/dailyMenuMeals/AddMultiMeals";
 
 const MenusProfile = () => {
@@ -71,9 +74,7 @@ const MenusProfile = () => {
     refetch: refetchMealPlans,
   } = usePaginateData<IMealPlansListDto>(useGetAllMealPlansQuery);
 
-  const [menuPlanItem, setMenuPlanItem] = useState<IMealPlans | null>(
-    mealPlansList?.data! && mealPlansList?.data[0]!
-  );
+  const [menuPlanItem, setMenuPlanItem] = useState<IMealPlans | null>(null);
   const startDate = dayjs(menuItem?.data?.startDate, "YYYY-MM-DD");
   const endDate = dayjs(menuItem?.data?.endDate, "YYYY-MM-DD");
 
@@ -101,14 +102,36 @@ const MenusProfile = () => {
   };
 
   useEffect(() => {
-    if (!menuPlanItem && mealPlansList?.data && value) {
-      setMenuPlanItem(mealPlansList?.data[0]);
-    }
-  }, [mealPlansList?.data, value]);
-
-  useEffect(() => {
     if (pageMealPlans && pageMealPlans > 1) refetchMealPlans();
   }, [pageMealPlans]);
+
+  const mealPlanOptions = useMemo(
+    () => (mealPlansList?.data ?? []) as IMealPlans[],
+    [mealPlansList?.data]
+  );
+
+  // Prefer Customize plan as default when present in API list
+  useEffect(() => {
+    if (!mealPlanOptions.length) return;
+
+    if (!menuPlanItem) {
+      const customize =
+        mealPlanOptions.find((row) => isCustomizeMealPlanRow(row)) ||
+        mealPlanOptions[0];
+      setMenuPlanItem(customize);
+      return;
+    }
+
+    const stillInOptions = mealPlanOptions.some(
+      (plan) => plan.id === menuPlanItem.id
+    );
+    if (!stillInOptions) {
+      const customize =
+        mealPlanOptions.find((row) => isCustomizeMealPlanRow(row)) ||
+        mealPlanOptions[0];
+      setMenuPlanItem(customize);
+    }
+  }, [mealPlanOptions, menuPlanItem]);
 
   return (
     <>
@@ -195,14 +218,12 @@ const MenusProfile = () => {
                   <AppBaseAutoComplete
                     label='mealPlans.name'
                     isLoading={isFetchingMealPlans}
-                    options={mealPlansList?.data}
+                    options={mealPlanOptions}
                     hasNextPage={mealPlansList?.hasNextPage}
                     pageNumber={pageMealPlans}
                     changePage={changePageMealPlans}
-                    defaultValue={
-                      (menuPlanItem && menuPlanItem) ||
-                      (mealPlansList?.data && mealPlansList?.data[0])
-                    }
+                    value={menuPlanItem}
+                    defaultValue={menuPlanItem}
                     onChangeAutoComplete={(event, value) => {
                       setMenuPlanItem(value ? value : null);
                       changePageMealPlans(1);
@@ -239,21 +260,43 @@ const MenusProfile = () => {
                                     item?.mealType?.nameAr!,
                                     item?.mealType?.nameEn!
                                   )}
-                                  <span style={{ color: "#a5d060" }}>
-                                    {" "}
-                                    {` - ${item?.price} AED`}
-                                  </span>
+                                  {item?.price != null && (
+                                    <span style={{ color: "#a5d060" }}>
+                                      {` - ${item?.price} AED`}
+                                    </span>
+                                  )}
+                                  {isCustomizeMealPlan(menuPlanItem) && (
+                                    <span style={{ color: "#64748B", fontSize: 14 }}>
+                                      {" "}
+                                      (
+                                      {(messages[
+                                        "mealPlans.customize.badge"
+                                      ] as string) || "Customize"}
+                                      )
+                                    </span>
+                                  )}
                                 </Typography>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <DailyMenuMealsPage
-                                  date={value}
-                                  dates={dateArray}
-                                  mealTypeId={item?.mealType?.id}
-                                  mealPlanId={menuPlanItem?.id}
-                                  mealPlan={menuPlanItem}
-                                  mealType={item?.mealType!}
-                                />
+                                {isCustomizeMealPlan(menuPlanItem) ? (
+                                  <CustomizeMealTypeMealsPanel
+                                    date={value}
+                                    dates={dateArray}
+                                    mealTypeId={item?.mealType?.id}
+                                    mealPlanId={menuPlanItem?.id}
+                                    mealPlan={menuPlanItem}
+                                    mealType={item?.mealType!}
+                                  />
+                                ) : (
+                                  <DailyMenuMealsPage
+                                    date={value}
+                                    dates={dateArray}
+                                    mealTypeId={item?.mealType?.id}
+                                    mealPlanId={menuPlanItem?.id}
+                                    mealPlan={menuPlanItem}
+                                    mealType={item?.mealType!}
+                                  />
+                                )}
                               </AccordionDetails>
                             </Accordion>
                           </div>

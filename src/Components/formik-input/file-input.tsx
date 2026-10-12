@@ -68,8 +68,9 @@ const FileInput = (props: InputFieldProps) => {
             isError ? theme.palette.error?.main : theme.palette.primary.main
           }`,
           position: "relative",
-          height: "60%",
-          minHeight: "40px",
+          height: props.height ? `${props.height}px` : "60%",
+          width: props.width ? `${props.width}px` : "100%",
+          minHeight: props.height ? `${props.height}px` : "40px",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",

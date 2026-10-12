@@ -28,11 +28,20 @@ interface IProps {
   date: string;
   mealPlan: IMealPlans;
   mealType: IMealTypes;
+  /** Protein | Carbs | Fiber for Customize plan sections. */
+  macroCategory?: string;
 }
 
 const AddDailyMenuMeals: React.FC<IProps> = (props) => {
-  const { showAddModal, setShowAddModal, label, date, mealPlan, mealType } =
-    props;
+  const {
+    showAddModal,
+    setShowAddModal,
+    label,
+    date,
+    mealPlan,
+    mealType,
+    macroCategory,
+  } = props;
   const { menuIdParams } = useParams();
   const [addDailyMenuMealsMethod, { isLoading, isSuccess }] =
     useAddDailyMenuMealsMultiMutation();
@@ -87,10 +96,16 @@ const AddDailyMenuMeals: React.FC<IProps> = (props) => {
           mealTypeId: mealType.id,
           menuId: menuIdParams || "",
           mealIds: [],
+          ...(macroCategory ? { macroCategory } : {}),
         }}
         validationSchema={validationSchema}
         innerRef={refForm}
-        onSubmit={addDailyMenuMealsMethod}>
+        onSubmit={(data) =>
+          addDailyMenuMealsMethod({
+            ...data,
+            ...(macroCategory ? { macroCategory } : {}),
+          })
+        }>
         {({ errors, setFieldValue, touched }) => (
           <Form>
             <Grid container spacing={4}>

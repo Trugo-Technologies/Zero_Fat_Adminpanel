@@ -9,7 +9,11 @@ import {
   useUpdateDiscountRuleMutation,
 } from "src/pages/clients-module/discounts/discountRules/services/api";
 import { ISelectedRow } from "src/types/baseEntity";
-import { IUpdateDiscountRuleDto } from "src/types/modules/clientsManagement/discounts/discountRules";
+import {
+  DiscountOfferType,
+  IUpdateDiscountRuleDto,
+  toDiscountRuleApiPayload,
+} from "src/types/modules/clientsManagement/discounts/discountRules";
 import { dateFormatInBackendPayload } from "src/utilities/date.utility";
 import DiscountRuleForm from "./DiscountRuleForm";
 import discountRulesValidationSchema from "./validation";
@@ -56,6 +60,7 @@ const EditDiscountRule: React.FC<IProps> = (props) => {
       loading={detailsLoading}
       maxWidth={"md"}>
       <Formik
+        enableReinitialize
         validateOnChange={true}
         initialValues={{
           id: selectedRow.id,
@@ -69,16 +74,22 @@ const EditDiscountRule: React.FC<IProps> = (props) => {
           expirationDate: ItemById?.data?.expirationDate || "",
           startDate: ItemById?.data?.startDate || "",
           firstTimeClientsOnly: ItemById?.data?.firstTimeClientsOnly!,
+          addToOffers: !!ItemById?.data?.addToOffers,
           isActive: ItemById?.data?.isActive!,
           isPercent: !!ItemById?.data?.percentOff,
           maxRedemptions: ItemById?.data?.maxRedemptions || null,
           maxRedemptionsPerClient:
             ItemById?.data?.maxRedemptionsPerClient || null,
+          offerType:
+            ItemById?.data?.offerType || DiscountOfferType.PromoCode,
+          bankId: ItemById?.data?.bankId || "",
+          mealPlanId: ItemById?.data?.mealPlanId || "",
+          subscriptionTypes: ItemById?.data?.subscriptionTypes || [],
         }}
         validationSchema={discountRulesValidationSchema(messages)}
         innerRef={refForm}
         onSubmit={(data) => {
-          data = {
+          const payload = toDiscountRuleApiPayload({
             ...data,
             startDate:
               data?.startDate === ItemById?.data?.startDate
@@ -95,8 +106,8 @@ const EditDiscountRule: React.FC<IProps> = (props) => {
             maxRedemptionsPerClient: data?.maxRedemptionsPerClient
               ? data?.maxRedemptionsPerClient
               : 0,
-          };
-          updateDiscountRuleMethod({ id: selectedRow.id, data });
+          });
+          updateDiscountRuleMethod({ id: selectedRow.id, data: payload });
         }}>
         <DiscountRuleForm />
       </Formik>

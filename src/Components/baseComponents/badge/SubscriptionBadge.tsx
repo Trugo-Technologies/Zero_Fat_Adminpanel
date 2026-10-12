@@ -1,6 +1,7 @@
 import * as React from "react";
 import AppBoxBadge from "./AppBoxBadge";
-import { subscriptionStatus, workoutLevel } from "../../../types/enums";
+import { subscriptionStatus } from "../../../types/enums";
+
 interface ISubscriptionBadgeProps {
   label: string;
 }
@@ -18,6 +19,12 @@ const SubscriptionBadge: React.FC<ISubscriptionBadgeProps> = (props) => {
           color: "#a5d060",
         };
       case subscriptionStatus.Cancelled:
+      case "Canceled":
+        return {
+          color: "#c91c1cbd",
+        };
+      case subscriptionStatus.Expired:
+      case "PastDue":
         return {
           color: "#c91c1cbd",
         };
@@ -34,7 +41,8 @@ const SubscriptionBadge: React.FC<ISubscriptionBadgeProps> = (props) => {
 
   return (
     <AppBoxBadge
-      label={`clients.subscriptionStatus.${label}`}
+      label={label}
+      translate={false}
       backgroundColor={getCurrentColorBadge(label).color}
     />
   );

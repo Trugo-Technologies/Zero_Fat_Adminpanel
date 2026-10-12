@@ -223,6 +223,14 @@ const routesConfig = [
             url: "/nutriplan/mealPlanning/customizationOptions",
             permittedRole: [],
           },
+          {
+            id: "customizePricing",
+            messageId: "sidebar.customizePricing",
+            title: "customizePricing",
+            type: "item",
+            url: "/nutriplan/mealPlanning/customizePricing",
+            permittedRole: [],
+          },
         ],
       },
 
@@ -419,7 +427,46 @@ const routesConfig = [
             type: "item",
             url: "/clientsManagement/discounts/discountRules",
           },
+          // Promo Codes UI merged into Discount Rules (same DiscountRules API)
+          // {
+          //   id: "promoCodes",
+          //   messageId: "promoCodes.name",
+          //   title: "promoCodes",
+          //   type: "item",
+          //   url: "/clientsManagement/discounts/promoCodes",
+          // },
+          {
+            id: "promoBanks",
+            messageId: "promoBanks.name",
+            title: "promoBanks",
+            type: "item",
+            url: "/clientsManagement/discounts/banks",
+          },
         ],
+      },
+
+      {
+        id: "challenges",
+        messageId: "sidebar.challenges",
+        title: "challenges",
+        type: "item",
+        url: "/clientsManagement/challenges",
+      },
+
+      {
+        id: "leaderboard",
+        messageId: "sidebar.leaderboard",
+        title: "leaderboard",
+        type: "item",
+        url: "/clientsManagement/leaderboard",
+      },
+
+      {
+        id: "homeBanners",
+        messageId: "sidebar.homeBanners",
+        title: "homeBanners",
+        type: "item",
+        url: "/clientsManagement/homeBanners",
       },
 
       {

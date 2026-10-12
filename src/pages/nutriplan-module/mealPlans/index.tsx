@@ -2,7 +2,7 @@
 
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { Button, Card, CardContent, Grid } from "@mui/material";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import useIntl from "react-intl/lib/src/components/useIntl";
 import AppBreadcrumb from "src/Components/baseComponents/breadcrumb/AppBreadcrumb";
 import AppDataGrid from "src/Components/baseComponents/dataGrid/AppDataGrid";
@@ -10,7 +10,11 @@ import AppFilters from "src/Components/baseComponents/filters/AppFilters";
 import { initialDataGridState } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { endPoints } from "src/shared/end-points";
-import { IMealPlansListDto } from "src/types/modules/nutriplan/mealPlans";
+import {
+  IMealPlans,
+  IMealPlansListDto,
+  isCustomizeMealPlanRow,
+} from "src/types/modules/nutriplan/mealPlans";
 import {
   buildMealPlanExportFilterInputs,
   buildMealPlanListFilterInputs,
@@ -38,7 +42,9 @@ const MealPlansPages = () => {
     columns,
     Modals,
     setShowAddModal,
+    openCustomizeModal,
   } = useMealPlans();
+
   const {
     changePage,
     data,
@@ -51,6 +57,25 @@ const MealPlansPages = () => {
     refetch,
     setParameter,
   } = usePaginateData<IMealPlansListDto>(useGetAllMealPlansQuery);
+
+  const tableRows = useMemo(
+    () => (data?.data ?? []) as IMealPlans[],
+    [data?.data]
+  );
+
+  const customizePlanFromApi = useMemo(
+    () => tableRows.find((row) => isCustomizeMealPlanRow(row)) || null,
+    [tableRows]
+  );
+
+  const hasCustomizePlan = !!customizePlanFromApi;
+
+  const setShowCustomizeModal = useCallback(
+    (_value: React.SetStateAction<boolean>) => {
+      openCustomizeModal(customizePlanFromApi);
+    },
+    [openCustomizeModal, customizePlanFromApi]
+  );
 
   const { data: activeMealPlansData } = useGetActiveMealPlansQuery();
   const [exportMealPlans, { isLoading: isExporting }] =
@@ -194,6 +219,13 @@ const MealPlansPages = () => {
                 <AppFilters
                   addTitle="mealPlans.add"
                   setShowAddModal={setShowAddModal}
+                  showAddSecondButton
+                  addSecondTitle={
+                    hasCustomizePlan
+                      ? "mealPlans.customize.edit"
+                      : "mealPlans.customize.add"
+                  }
+                  setShowAddSecondModal={setShowCustomizeModal}
                   onChangeKeywordValue={(
                     event: React.ChangeEvent<HTMLInputElement>
                   ) => {
@@ -231,7 +263,7 @@ const MealPlansPages = () => {
                   }}
                   pageSize={limit ?? 10}
                   columns={columns}
-                  rows={data?.data ?? []}
+                  rows={tableRows}
                   loading={isFetching}
                   onSelectionModelChange={setSelectionModel}
                   checkboxSelection={true}

@@ -1,7 +1,6 @@
 /** @format */
 import { Grid, MenuItem } from "@mui/material";
 import { Form, Formik, FormikProps } from "formik";
-import moment from "moment";
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
@@ -11,10 +10,12 @@ import AppAddModal from "src/Components/baseComponents/modals/AppAddModal";
 import { getValueBasedOnCurrentLanguage } from "src/Helpers";
 import { usePaginateData } from "src/hooks/use-paginate-data";
 import { useGetAllMealPlansQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
+import { CUSTOMIZE_MENU_MACRO_OPTIONS } from "src/pages/nutriplan-module/menuManagement/dailyMenuMeals/customizeMenuHelpers";
 import { useAddDailyMenuMealsMultiMutation } from "src/pages/nutriplan-module/menuManagement/dailyMenuMeals/services/api";
 import {
-  IMealPlansListDto,
   IMealPlans,
+  IMealPlansListDto,
+  isCustomizeMealPlanRow,
 } from "src/types/modules/nutriplan/mealPlans";
 import { IExportDailyMenuMealsDto } from "src/types/modules/nutriplan/menuManagement/dailyMenuMeals";
 import { dateFormatInBackendPayload } from "src/utilities/date.utility";
@@ -43,6 +44,12 @@ const ExportDailyMenuMeals: React.FC<IProps> = (props) => {
     date: yup.string().required(String(messages["validation.required"])),
     mealPlanId: yup.string().required(String(messages["validation.required"])),
     mealTypeId: yup.string().required(String(messages["validation.required"])),
+    macroCategory: yup.string().when([], {
+      is: () => isCustomizeMealPlanRow(selectedMealPlan),
+      then: (schema) =>
+        schema.required(String(messages["validation.required"])),
+      otherwise: (schema) => schema.optional(),
+    }),
   });
   const refForm = React.useRef<FormikProps<IExportDailyMenuMealsDto>>(null);
   const {
@@ -75,26 +82,34 @@ const ExportDailyMenuMeals: React.FC<IProps> = (props) => {
       maxWidth={"md"}>
       <Formik
         validateOnChange={true}
+        enableReinitialize
         initialValues={{
           mealIds,
           date: "",
           mealPlanId: "",
           mealTypeId: "",
           menuId: menuIdParams || "",
+          macroCategory: "",
         }}
         validationSchema={validationSchema}
         innerRef={refForm}
         onSubmit={(data) => {
-          data = {
+          const payload: IExportDailyMenuMealsDto = {
             ...data,
             date: dateFormatInBackendPayload(data.date),
           };
-          exportDailyMenuMealsMethod(data)
+          if (
+            !isCustomizeMealPlanRow(selectedMealPlan) ||
+            !payload.macroCategory
+          ) {
+            delete payload.macroCategory;
+          }
+          exportDailyMenuMealsMethod(payload)
             .unwrap()
             .then(onSuccess)
             .catch(() => {});
         }}>
-        {({ errors, setFieldValue, touched, values }) => {
+        {({ errors, setFieldValue, touched }) => {
           return (
             <Form>
               <Grid container spacing={4}>
@@ -110,6 +125,7 @@ const ExportDailyMenuMeals: React.FC<IProps> = (props) => {
                       setSelectedMealPlan(value || null);
                       setFieldValue("mealTypeId", "");
                       setFieldValue("mealPlanId", value ? value?.id : "");
+                      setFieldValue("macroCategory", "");
                       changePageMealPlans(1);
                     }}
                     searchText={searchValueMealPlans}
@@ -157,6 +173,27 @@ const ExportDailyMenuMeals: React.FC<IProps> = (props) => {
                     ))}
                   </AppSelectField>
                 </Grid>
+                {isCustomizeMealPlanRow(selectedMealPlan) && (
+                  <Grid item xs={6}>
+                    <AppSelectField
+                      fullWidth
+                      size='small'
+                      name='macroCategory'
+                      labelId='dailyMenuMeals.macroCategory'
+                      label={
+                        (messages["dailyMenuMeals.macroCategory"] as string) ||
+                        "Macro Category"
+                      }
+                      error={Boolean(errors?.macroCategory)}>
+                      {CUSTOMIZE_MENU_MACRO_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {(messages[option.labelKey] as string) ||
+                            option.fallback}
+                        </MenuItem>
+                      ))}
+                    </AppSelectField>
+                  </Grid>
+                )}
               </Grid>
             </Form>
           );

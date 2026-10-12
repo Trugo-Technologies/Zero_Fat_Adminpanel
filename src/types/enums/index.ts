@@ -150,6 +150,7 @@ export const subscriptionType = {
   OneWeek: "OneWeek",
   OneMonth: "OneMonth",
   ThreeMonths: "ThreeMonths",
+  Custom: "Custom",
 };
 
 export const preferredMealTime = {

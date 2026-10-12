@@ -1,9 +1,13 @@
 /** @format */
 
-import { Duration } from "src/types/modules/clientsManagement/discounts/discountRules";
+import {
+  DiscountOfferType,
+  Duration,
+} from "src/types/modules/clientsManagement/discounts/discountRules";
 
 export const ALL_DURATIONS = "All Durations";
 export const ALL_STATUS = "All Status";
+export const ALL_OFFER_TYPES = "All Offer Types";
 
 export const selectSx = {
   borderRadius: 2,
@@ -27,12 +31,24 @@ export const DURATION_OPTIONS = [
   { value: Duration.Forever, labelKey: "discountRules.duration.Forever" },
 ] as const;
 
+export const OFFER_TYPE_OPTIONS = [
+  {
+    value: DiscountOfferType.PromoCode,
+    labelKey: "discountRules.offerType.PromoCode",
+  },
+  {
+    value: DiscountOfferType.Bank,
+    labelKey: "discountRules.offerType.Bank",
+  },
+] as const;
+
 export type DiscountRuleAppliedFilters = {
   startDateFrom: string;
   startDateTo: string;
   expirationDateFrom: string;
   expirationDateTo: string;
   duration: string;
+  offerType: string;
   status: string;
 };
 
@@ -43,6 +59,7 @@ export const createDefaultDiscountRuleFilters =
     expirationDateFrom: "",
     expirationDateTo: "",
     duration: ALL_DURATIONS,
+    offerType: ALL_OFFER_TYPES,
     status: ALL_STATUS,
   });
 
@@ -54,6 +71,8 @@ export const buildDiscountRuleFilterQueryParams = (
   expirationDateFrom: filters.expirationDateFrom || undefined,
   expirationDateTo: filters.expirationDateTo || undefined,
   duration: filters.duration === ALL_DURATIONS ? undefined : filters.duration,
+  offerType:
+    filters.offerType === ALL_OFFER_TYPES ? undefined : filters.offerType,
   isActive:
     filters.status === "Active"
       ? true
@@ -71,6 +90,7 @@ export type DiscountRulesFilterRequest = {
   expirationDateFrom?: string;
   expirationDateTo?: string;
   duration?: string;
+  offerType?: string;
   isActive?: boolean;
 };
 
@@ -123,6 +143,10 @@ export const buildDiscountRulesFilterRequest = (
 
   if (typeof params.duration === "string" && params.duration) {
     request.duration = params.duration;
+  }
+
+  if (typeof params.offerType === "string" && params.offerType) {
+    request.offerType = params.offerType;
   }
 
   if (typeof params.isActive === "boolean") {

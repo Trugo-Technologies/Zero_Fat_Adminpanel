@@ -25,6 +25,10 @@ export interface ICreateRecipesDto {
   fullRecipeTextEn: string;
   preparationMethodAr: string;
   preparationMethodEn: string;
+  heatingInstructionsEn: string;
+  heatingInstructionsAr: string;
+  servingInstructionsEn: string;
+  servingInstructionsAr: string;
   preparationTime: number | null;
   cookingTime: number | null;
   servings: number | null;
@@ -78,6 +82,10 @@ export interface IRecipes extends IBaseAdditionalResponseDetailsDto {
   fullRecipeTextEn: string;
   preparationMethodAr: string;
   preparationMethodEn: string;
+  heatingInstructionsEn: string;
+  heatingInstructionsAr: string;
+  servingInstructionsEn: string;
+  servingInstructionsAr: string;
   preparationTime: number;
   cookingTime: number;
   servings: number;

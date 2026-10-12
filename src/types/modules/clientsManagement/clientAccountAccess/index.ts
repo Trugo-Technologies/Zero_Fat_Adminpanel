@@ -525,10 +525,32 @@ export interface IUpdateSubscriptionWizardRenewalOptionsPayload {
   scheduledStartDate?: string;
 }
 
+export interface ISubscriptionWizardMealMacroInstance {
+  proteinGrams: number;
+  carbsGrams: number;
+  fiberGrams: number;
+}
+
 export interface ISubscriptionWizardMealTypeSelection {
   mealTypeId: string;
   name: string;
   quantityPerDay: number;
+  /** Customize plan: total grams for this meal type (sum of instances) */
+  proteinGrams?: number;
+  carbsGrams?: number;
+  fiberGrams?: number;
+  /** One entry per quantity unit (Customize) */
+  macroInstances?: ISubscriptionWizardMealMacroInstance[];
+}
+
+/** One customized meal slot (e.g. Breakfast #1 with its own protein/carbs/fiber). */
+export interface ICustomMealInstance {
+  localId: string;
+  mealTypeId: string;
+  name: string;
+  proteinG: number | "";
+  carbsG: number | "";
+  fiberG: number | "";
 }
 
 export interface ISubscriptionWizardAddOnItem {
@@ -546,6 +568,9 @@ export interface IUpdateSubscriptionWizardConfigurationPayload {
   planVariant: string;
   calorieTarget: number;
   proteinTargetG: number;
+  proteinGrams?: number;
+  carbsGrams?: number;
+  fiberGrams?: number;
   mealTypeSelections: ISubscriptionWizardMealTypeSelection[];
   addOnItems: ISubscriptionWizardAddOnItem[];
 }

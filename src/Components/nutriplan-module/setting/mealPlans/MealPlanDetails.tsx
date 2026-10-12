@@ -4,11 +4,16 @@ import { Grid } from "@mui/material";
 import { useIntl } from "react-intl";
 import BaseDetails from "src/Components/baseComponents/details/BaseDetails";
 import AppItemView from "src/Components/baseComponents/other/AppItemView";
-import { getValueBasedOnCurrentLanguage, removeHTMLTags } from "src/Helpers";
+import { getValueBasedOnCurrentLanguage } from "src/Helpers";
 import { IWorkoutBodyPart } from "src/types/modules/workout/workoutBodyParts";
 import AppMoreDetails from "src/Components/baseComponents/details/AppMoreDetails";
 import { useGetMealPlanQuery } from "src/pages/nutriplan-module/mealPlans/services/api";
 import MealPlanDefaultDietitianGoal from "src/Components/baseComponents/badge/MealPlanDefaultDietitianGoal";
+import {
+  isCustomizeMealPlanRow,
+  mapMealPlanApiMacrosToForm,
+} from "src/types/modules/nutriplan/mealPlans";
+
 interface IMealPlanDetailsProps {
   setShowDetails: React.Dispatch<React.SetStateAction<boolean>>;
   showDetails: boolean;
@@ -17,7 +22,7 @@ interface IMealPlanDetailsProps {
 
 const MealPlanDetails = (props: IMealPlanDetailsProps) => {
   const { showDetails, setShowDetails, id } = props;
-  const { locale, messages } = useIntl();
+  const { locale } = useIntl();
 
   const {
     data: mealPlanItem,
@@ -29,20 +34,25 @@ const MealPlanDetails = (props: IMealPlanDetailsProps) => {
       skip: !id,
     }
   );
+
+  const plan = mealPlanItem?.data;
+  const isCustomize = isCustomizeMealPlanRow(plan);
+  const macros = mapMealPlanApiMacrosToForm(plan);
+
   return (
     <>
       <BaseDetails
         itemName={
-          locale == "en-US" && mealPlanItem?.data?.nameEn!
-            ? `- ${mealPlanItem?.data?.nameEn!}`
-            : `- ${mealPlanItem?.data?.nameAr!}`
+          locale == "en-US" && plan?.nameEn!
+            ? `- ${plan?.nameEn!}`
+            : `- ${plan?.nameAr!}`
         }
         label='mealPlans.details'
         open={showDetails}
         onClose={() => setShowDetails(false)}
         loading={isLoading}
         errorMessage={error}
-        moreDetails={mealPlanItem?.data as IWorkoutBodyPart}
+        moreDetails={plan as IWorkoutBodyPart}
         maxWidth='md'
         columns={12}
         tabs={[
@@ -53,17 +63,17 @@ const MealPlanDetails = (props: IMealPlanDetailsProps) => {
               <Grid container spacing={5} item xs={12}>
                 <AppItemView
                   label='common.nameAr'
-                  value={mealPlanItem?.data?.nameAr}
+                  value={plan?.nameAr}
                   column={3}
                 />
                 <AppItemView
                   label='common.nameEn'
-                  value={mealPlanItem?.data?.nameEn}
+                  value={plan?.nameEn}
                   column={3}
                 />
                 <AppItemView
                   label='common.code'
-                  value={mealPlanItem?.data?.code}
+                  value={plan?.code}
                   column={3}
                 />
 
@@ -71,23 +81,22 @@ const MealPlanDetails = (props: IMealPlanDetailsProps) => {
                   label='mealPlans.defaultDietitianGoal'
                   value={
                     <MealPlanDefaultDietitianGoal
-                      label={mealPlanItem?.data?.defaultDietitianGoal!}
+                      label={plan?.defaultDietitianGoal!}
                     />
                   }
                   column={3}
                 />
 
-                {/* <AppItemView label='trainers.name' value={getValueBasedOnCurrentLanguage(mealPlanItem?.data?.trainer?.nameAr!, mealPlanItem?.data?.trainer?.nameEn!)} column={3} /> */}
                 <AppItemView
                   type='image'
                   label='common.image'
-                  value={mealPlanItem?.data?.imageUrl}
+                  value={plan?.imageUrl}
                   column={3}
                 />
 
                 <AppItemView
                   label='common.status'
-                  value={mealPlanItem?.data?.isActive}
+                  value={plan?.isActive}
                   column={3}
                   type='isActive'
                 />
@@ -100,28 +109,65 @@ const MealPlanDetails = (props: IMealPlanDetailsProps) => {
             label: "trainers.additionalInfo",
             component: (
               <Grid container spacing={5} item xs={12}>
-                <AppItemView
-                  label='mealPlans.carbPercentage'
-                  value={mealPlanItem?.data?.carbPercentage}
-                  column={4}
-                />
-                <AppItemView
-                  label='mealPlans.proteinPercentage'
-                  value={mealPlanItem?.data?.proteinPercentage}
-                  column={4}
-                />
-                <AppItemView
-                  label='mealPlans.fatPercentage'
-                  value={mealPlanItem?.data?.fatPercentage}
-                  column={4}
-                />
+                {isCustomize ? (
+                  <>
+                    <AppItemView
+                      label='mealPlans.customize.proteinGrams'
+                      value={macros.protein.grams}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.customize.proteinCalories'
+                      value={macros.protein.calories}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.customize.carbsGrams'
+                      value={macros.carbs.grams}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.customize.carbsCalories'
+                      value={macros.carbs.calories}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.customize.fiberGrams'
+                      value={macros.fiber.grams}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.customize.fiberCalories'
+                      value={macros.fiber.calories}
+                      column={4}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <AppItemView
+                      label='mealPlans.carbPercentage'
+                      value={plan?.carbPercentage}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.proteinPercentage'
+                      value={plan?.proteinPercentage}
+                      column={4}
+                    />
+                    <AppItemView
+                      label='mealPlans.fatPercentage'
+                      value={plan?.fatPercentage}
+                      column={4}
+                    />
+                  </>
+                )}
                 <AppItemView
                   label='sidebar.mealTypes'
                   value={getValueBasedOnCurrentLanguage(
-                    mealPlanItem?.data?.mealPlanMealTypes
+                    plan?.mealPlanMealTypes
                       ?.map((item) => item?.mealType?.nameAr)
                       .join(", ") || "",
-                    mealPlanItem?.data?.mealPlanMealTypes
+                    plan?.mealPlanMealTypes
                       ?.map((item) => item?.mealType?.nameEn)
                       .join(", ") || ""
                   )}
@@ -134,7 +180,7 @@ const MealPlanDetails = (props: IMealPlanDetailsProps) => {
           {
             id: "3",
             label: "additionalInfo",
-            component: <AppMoreDetails moreDetails={mealPlanItem?.data!} />,
+            component: <AppMoreDetails moreDetails={plan!} />,
           },
         ]}
         children={<></>}

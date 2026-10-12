@@ -87,6 +87,8 @@ export type ArgsType = {
   deliveryTime?: string;
   dailySelectionStatus?: string;
   duration?: string;
+  offerType?: string | number;
+  macro?: number;
   date?: string | null;
   mealTypeId?: string;
   mealPlanId?: string;

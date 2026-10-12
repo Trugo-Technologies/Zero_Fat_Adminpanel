@@ -1,16 +1,13 @@
 {
   "compilerOptions": {
     "types": ["vite/client"],
-
     "target": "ESNext",
     "baseUrl": ".",
     "paths": {
       "src/*": ["./src/*"],
       "components/*": ["src/Components/*"],
       "@crema/*": ["./src/@crema/*"]
-
-    }
-  ,
+    },
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": true,
@@ -26,9 +23,6 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  
   "include": ["src"],
-
   "references": [{ "path": "./tsconfig.node.json" }]
-  
 }

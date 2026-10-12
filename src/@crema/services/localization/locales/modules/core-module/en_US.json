@@ -15,6 +15,7 @@
   "subscriptionPlans.subscriptionType.OneWeek": "One Week",
   "subscriptionPlans.subscriptionType.OneMonth": "One Month",
   "subscriptionPlans.subscriptionType.ThreeMonths": "Three Months",
+  "subscriptionPlans.subscriptionType.Custom": "Custom",
   "subscriptionPlans.minimumOrderValue": "Minimum Order Value",
   "subscriptionPlans.percentageDiscount": "Percentage Discount",
   "subscriptionPlans.subscriptionModule": "Subscription Module",

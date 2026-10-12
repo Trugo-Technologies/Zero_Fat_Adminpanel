@@ -236,6 +236,14 @@ const EditRecipes = () => {
                       recipeItem?.data?.preparationMethodAr || "",
                     preparationMethodEn:
                       recipeItem?.data?.preparationMethodEn || "",
+                    heatingInstructionsAr:
+                      recipeItem?.data?.heatingInstructionsAr || "",
+                    heatingInstructionsEn:
+                      recipeItem?.data?.heatingInstructionsEn || "",
+                    servingInstructionsAr:
+                      recipeItem?.data?.servingInstructionsAr || "",
+                    servingInstructionsEn:
+                      recipeItem?.data?.servingInstructionsEn || "",
                   }}
                   validationSchema={validationSchema}
                   innerRef={refForm}
@@ -764,6 +772,32 @@ const EditRecipes = () => {
                           <AppFreeEditor
                             name='preparationMethodEn'
                             label='recipes.preparationMethodEn'
+                          />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='heatingInstructionsAr'
+                            label='recipes.heatingInstructionsAr'
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='heatingInstructionsEn'
+                            label='recipes.heatingInstructionsEn'
+                          />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='servingInstructionsAr'
+                            label='recipes.servingInstructionsAr'
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <AppFreeEditor
+                            name='servingInstructionsEn'
+                            label='recipes.servingInstructionsEn'
                           />
                         </Grid>
 

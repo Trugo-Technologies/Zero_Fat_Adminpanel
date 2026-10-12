@@ -87,6 +87,10 @@ const parseAddOnCart = (
 export type ConfigurationFormState = {
   selectedPlan: string;
   calorieTarget: number;
+  proteinTargetG?: number;
+  proteinGrams?: number;
+  carbsGrams?: number;
+  fiberGrams?: number;
   mealTypeSelections: ISubscriptionWizardMealTypeSelection[];
   cart: CartItem[];
 };
@@ -102,7 +106,10 @@ export const buildConfigurationPayload = (
     mealPlanId: form.selectedPlan,
     planVariant: String(totalMeals),
     calorieTarget: form.calorieTarget,
-    proteinTargetG: 0,
+    proteinTargetG: form.proteinTargetG ?? form.proteinGrams ?? 0,
+    proteinGrams: form.proteinGrams ?? 0,
+    carbsGrams: form.carbsGrams ?? 0,
+    fiberGrams: form.fiberGrams ?? 0,
     mealTypeSelections: form.mealTypeSelections,
     addOnItems: form.cart.map((item) => ({
       itemId: item.id,

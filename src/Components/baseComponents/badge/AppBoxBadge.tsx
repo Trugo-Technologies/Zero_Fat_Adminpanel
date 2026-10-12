@@ -5,10 +5,12 @@ import IntlMessages from '../../../../src/@crema/helpers/IntlMessages';
 interface IAppBoxBadgeProps {
   label: string;
   backgroundColor: string;
+  /** When false, renders `label` as plain text (backend value). Default true. */
+  translate?: boolean;
 }
 
 const AppBoxBadge: React.FC<IAppBoxBadgeProps> = (props) => {
-  const { label, backgroundColor } = props;
+  const { label, backgroundColor, translate = true } = props;
 
   return (
     <Box
@@ -21,7 +23,7 @@ const AppBoxBadge: React.FC<IAppBoxBadgeProps> = (props) => {
         margin: '2px',
       }}
     >
-      <IntlMessages id={label} />
+      {translate ? <IntlMessages id={label} /> : label}
     </Box>
   );
 };
